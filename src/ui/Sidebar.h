@@ -22,8 +22,10 @@ private:
     public:
         SidebarButton(int x, int y, int w, int h, const char* label);
         void draw() override;
+        int handle(int event) override;
         bool pinned = false;
         Fl_Image* icon = nullptr;
+        std::string path; // Store path for context menu
     };
 
     struct SidebarItem {

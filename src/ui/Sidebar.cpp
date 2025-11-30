@@ -6,6 +6,7 @@
 #include <iostream>
 #include <FL/Fl.H>
 #include <FL/fl_draw.H>
+#include <FL/Fl_Menu_Item.H>
 
 namespace ui {
 
@@ -25,8 +26,6 @@ Sidebar::Sidebar(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
         }, this);
     });
 }
-
-
 
 Sidebar::SidebarButton::SidebarButton(int x, int y, int w, int h, const char* label)
     : Fl_Button(x, y, w, h, label) {
@@ -66,6 +65,25 @@ void Sidebar::SidebarButton::draw() {
     }
 }
 
+int Sidebar::SidebarButton::handle(int event) {
+    if (event == FL_PUSH && Fl::event_button() == FL_RIGHT_MOUSE) {
+        if (pinned) {
+            ::Fl_Menu_Item menu[] = {
+                { "Unpin from Quick Access", 0, 0, 0, 0 },
+                { 0 }
+            };
+            const ::Fl_Menu_Item* m = menu->popup(Fl::event_x(), Fl::event_y(), 0, 0, 0);
+            if (m) {
+                if (strcmp(m->label(), "Unpin from Quick Access") == 0) {
+                    core::QuickAccess::Get().Unpin(path);
+                }
+            }
+            return 1;
+        }
+    }
+    return Fl_Button::handle(event);
+}
+
 void Sidebar::Refresh() {
     this->begin(); // Ensure buttons are added to this group
 
@@ -76,16 +94,6 @@ void Sidebar::Refresh() {
     items.clear();
     
     // We do NOT clear icon_cache here. We keep it.
-    // We also do not clear `icons` vector if it holds ownership of cached icons?
-    // If `icon_cache` holds pointers to `icons` elements, we must be careful.
-    // Let's say `icons` owns the images.
-    // If we clear `icons`, `icon_cache` becomes invalid.
-    // So we should NOT clear `icons` if we want to cache.
-    // But we need to avoid duplicates in `icons` if we reload.
-    // Actually, `IconManager` returns new images for specific icons.
-    // We should manage ownership in `icon_cache` directly if possible, or `icons`.
-    // Let's make `icon_cache` own them? No, `std::map` values are pointers.
-    // Let's keep `icons` as the owner list, but only add NEW icons to it.
     
     int cur_y = y() + 10;
     
@@ -97,8 +105,6 @@ void Sidebar::Refresh() {
         size_t pos = label.find_last_of("/\\");
         if (pos != std::string::npos) label = label.substr(pos + 1);
         if (label.empty()) label = item.path;
-        
-        // No pin in label anymore
         
         AddButton(label.c_str(), item.path, cur_y, item.pinned);
     }
@@ -130,6 +136,7 @@ void Sidebar::AddButton(const char* label, const std::string& path, int& cur_y, 
     SidebarButton* btn = new SidebarButton(x() + 10, cur_y, w() - 20, 30, label);
     btn->copy_label(label);
     btn->pinned = pinned;
+    btn->path = path;
     
     // Check cache
     auto it = icon_cache.find(path);
