@@ -22,8 +22,6 @@ int main(int argc, char** argv) {
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
     core::Log("Startup time: " + std::to_string(duration) + " ms");
 
-    core::StartLoading("C:/");
-
     int result = Fl::run();
     
     CoUninitialize();

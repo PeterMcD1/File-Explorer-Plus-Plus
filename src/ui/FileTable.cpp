@@ -7,7 +7,8 @@
 
 namespace ui {
 
-FileTable::FileTable(int x, int y, int w, int h, const char* l) : Fl_Table_Row(x, y, w, h, l) {
+FileTable::FileTable(int x, int y, int w, int h, const char* l, std::shared_ptr<core::TabContext> context) 
+    : Fl_Table_Row(x, y, w, h, l), tab_context(context) {
     rows(0);
     cols(3); // Name, Size, Type
     
@@ -48,10 +49,10 @@ void FileTable::draw_cell(TableContext context, int R, int C, int X, int Y, int 
 
         // Data
         {
-            std::lock_guard<std::mutex> lock(core::g_files_mutex);
+            std::lock_guard<std::mutex> lock(tab_context->mutex);
             
-            if (R < core::g_files.size()) {
-                const auto& entry = core::g_files[R];
+            if (R < tab_context->files.size()) {
+                const auto& entry = tab_context->files[R];
                 
                 // Icon
                 int text_x = X + 5;
@@ -89,7 +90,6 @@ void FileTable::draw_cell(TableContext context, int R, int C, int X, int Y, int 
             }
         }
         
-        // Border
         fl_color(FL_LIGHT2);
         fl_rect(X, Y, W, H);
         
@@ -102,21 +102,24 @@ void FileTable::draw_cell(TableContext context, int R, int C, int X, int Y, int 
 }
 
 int FileTable::handle(int event) {
-    if (event == FL_PUSH && Fl::event_clicks()) { // Double click
+    if (event == FL_PUSH && Fl::event_clicks()) {
         int r = callback_row();
         if (r >= 0) {
-            std::string new_path;
+            std::string path;
+            bool is_dir = false;
             {
-                std::lock_guard<std::mutex> lock(core::g_files_mutex);
-                if (r < core::g_files.size() && core::g_files[r].is_dir) {
-                    new_path = core::g_files[r].path;
+                std::lock_guard<std::mutex> lock(tab_context->mutex);
+                if (r < tab_context->files.size()) {
+                    path = tab_context->files[r].path;
+                    is_dir = tab_context->files[r].is_dir;
                 }
             }
-            if (!new_path.empty()) {
-                core::StartLoading(new_path);
+            
+            if (is_dir && !path.empty()) {
+                core::StartLoading(path, tab_context);
+                return 1;
             }
         }
-        return 1;
     }
     return Fl_Table_Row::handle(event);
 }

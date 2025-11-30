@@ -37,13 +37,15 @@ target_include_directories(core_lib PUBLIC
     ${fltk_BINARY_DIR}
     ${FLTK_BINARY_DIR}
 )
-target_link_libraries(core_lib PUBLIC fltk) # FileSystem uses Fl::awake
+target_link_libraries(core_lib PUBLIC fltk)
 
 # --- UI Library ---
 add_library(ui_lib STATIC
     src/ui/FileTable.cpp
     src/ui/ExplorerWindow.cpp
     src/ui/IconManager.cpp
+    src/ui/ExplorerTab.cpp
+    src/ui/TabBar.cpp
 )
 target_include_directories(ui_lib PUBLIC src)
 target_link_libraries(ui_lib PUBLIC core_lib fltk user32 shell32 gdi32)

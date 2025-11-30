@@ -3,7 +3,11 @@
 #include <FL/Fl_Button.H>
 #include <FL/Fl_Box.H>
 #include <FL/Fl_RGB_Image.H>
-#include "FileTable.h"
+#include <FL/Fl_Group.H>
+#include "ExplorerTab.h"
+#include "TabBar.h"
+#include <memory>
+#include <vector>
 
 namespace ui {
 
@@ -12,22 +16,24 @@ public:
     ExplorerWindow(int w, int h, const char* title);
     ~ExplorerWindow();
     
-    void RefreshTable();
-    void SetAddress(const char* path);
+    void RefreshUI(); // Updates status from active tab
+    void SetAddress(const char* path); // Deprecated or delegates to active tab
     void UpdateStatus();
     void SetAppIcon(Fl_RGB_Image* icon);
-    
-    // Static callback for Fl::awake
-    static void UpdateUICallback(void*);
+    void Navigate(const char* path);
+    void AddTab(const char* path);
+    void CloseTab(ExplorerTab* tab);
+    void SetActiveTab(ExplorerTab* tab);
 
 private:
-    Fl_Input* address_bar;
-    Fl_Button* go_btn;
-    FileTable* file_table;
+    TabBar* tab_bar;
+    Fl_Group* content_area;
     Fl_Box* status_bar;
     Fl_RGB_Image* app_icon = nullptr;
     
-    static void AddressCallback(Fl_Widget* w, void*);
+    ExplorerTab* active_tab = nullptr;
+    
+    static void NewTabCallback(Fl_Widget* w, void*);
 };
 
 }
