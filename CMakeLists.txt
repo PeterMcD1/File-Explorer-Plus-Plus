@@ -46,6 +46,7 @@ add_library(ui_lib STATIC
     src/ui/IconManager.cpp
     src/ui/ExplorerTab.cpp
     src/ui/TabBar.cpp
+    src/ui/Sidebar.cpp
 )
 target_include_directories(ui_lib PUBLIC src)
 target_link_libraries(ui_lib PUBLIC core_lib fltk user32 shell32 gdi32)

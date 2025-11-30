@@ -6,6 +6,7 @@
 #include <FL/Fl_Group.H>
 #include "ExplorerTab.h"
 #include "TabBar.h"
+#include "Sidebar.h"
 #include <memory>
 #include <vector>
 
@@ -27,6 +28,7 @@ public:
 
 private:
     TabBar* tab_bar;
+    Sidebar* sidebar;
     Fl_Group* content_area;
     Fl_Box* status_bar;
     Fl_RGB_Image* app_icon = nullptr;

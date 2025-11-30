@@ -41,8 +41,18 @@ ExplorerWindow::ExplorerWindow(int w, int h, const char* title) : Fl_Double_Wind
     // Schedule icon loading to run after startup
     Fl::add_timeout(0.0, ScheduledIconLoad, this);
 
-    // Tab Bar (Top)
-    tab_bar = new TabBar(10, 10, w - 20, 30);
+    // Sidebar (Left)
+    int sidebar_w = 180;
+    sidebar = new Sidebar(10, 10, sidebar_w, h - 20);
+    sidebar->SetNavigateCallback([this](const std::string& path) {
+        this->Navigate(path.c_str());
+    });
+
+    // Tab Bar (Top Right)
+    int content_x = 10 + sidebar_w + 10;
+    int content_w = w - content_x - 10;
+    
+    tab_bar = new TabBar(content_x, 10, content_w, 30);
     tab_bar->on_tab_selected = [this](void* data) {
         this->SetActiveTab((ExplorerTab*)data);
     };
@@ -53,14 +63,18 @@ ExplorerWindow::ExplorerWindow(int w, int h, const char* title) : Fl_Double_Wind
         this->AddTab("C:/");
     };
     
-    // Content Area
-    content_area = new Fl_Group(10, 40, w - 20, h - 70);
+    // Content Area (Below Tab Bar)
+    content_area = new Fl_Group(content_x, 40, content_w, h - 70);
     content_area->end(); // Empty initially
 
-    status_bar = new Fl_Box(10, h - 25, w - 20, 20, "Ready");
+    status_bar = new Fl_Box(content_x, h - 25, content_w, 20, "Ready");
     status_bar->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
     status_bar->box(FL_FLAT_BOX);
 
+    // Resize behavior: Sidebar fixed width, content area resizes
+    // Fl_Group resizable logic is tricky.
+    // If we set resizable(content_area), then sidebar stays fixed?
+    // Let's try.
     resizable(content_area);
     end();
     
