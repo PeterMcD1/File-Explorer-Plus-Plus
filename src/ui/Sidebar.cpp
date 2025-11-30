@@ -10,9 +10,17 @@
 
 namespace ui {
 
-Sidebar::Sidebar(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
+Sidebar::Sidebar(int x, int y, int w, int h) : Fl_Scroll(x, y, w, h) {
     box(FL_FLAT_BOX);
     color(fl_rgb_color(37, 37, 38)); // #252526 Darker gray
+    
+    // Scrollbar settings
+    type(Fl_Scroll::VERTICAL_ALWAYS); // Always show vertical scrollbar
+    scrollbar_size(12);
+    scrollbar.box(FL_FLAT_BOX);
+    scrollbar.color(fl_rgb_color(25, 25, 25)); // Track (darker than bg)
+    scrollbar.slider(FL_FLAT_BOX);
+    scrollbar.selection_color(fl_rgb_color(80, 80, 80)); // Thumb
     
     Refresh();
     
@@ -99,7 +107,7 @@ void Sidebar::Refresh() {
     int cur_y = y() + 10;
     
     // Quick Access
-    auto items_list = core::QuickAccess::Get().GetItems(15);
+    auto items_list = core::QuickAccess::Get().GetItems(100);
     for (const auto& item : items_list) {
         std::string label = item.path;
         if (label.back() == '/' || label.back() == '\\') label.pop_back();
@@ -134,7 +142,7 @@ void Sidebar::SetNavigateCallback(std::function<void(const std::string&)> cb) {
 void Sidebar::AddButton(const char* label, const std::string& path, int& cur_y, bool pinned) {
     if (path.empty()) return;
     
-    SidebarButton* btn = new SidebarButton(x() + 10, cur_y, w() - 20, 30, label);
+    SidebarButton* btn = new SidebarButton(x() + 10, cur_y, w() - 25, 30, label);
     btn->copy_label(label);
     btn->pinned = pinned;
     btn->path = path;

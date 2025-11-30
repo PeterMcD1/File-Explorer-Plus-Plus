@@ -31,23 +31,25 @@ public:
     bool LoadWindowPos();
 
     int handle(int event) override; // For window dragging
+    void resize(int x, int y, int w, int h) override;
     void show() override;
 
 private:
     // Title Bar Area
-    Fl_Group* title_bar;
-    TabBar* tab_bar;
-    Fl_Button* btn_min;
-    Fl_Button* btn_max;
-    Fl_Button* btn_close;
+    // Title Bar Area
+    Fl_Group* title_bar = nullptr;
+    TabBar* tab_bar = nullptr;
+    Fl_Button* btn_min = nullptr;
+    Fl_Button* btn_max = nullptr;
+    Fl_Button* btn_close = nullptr;
     
     // Navigation Area
-    Fl_Group* nav_area;
-    Fl_Input* address_bar;
+    Fl_Group* nav_area = nullptr;
+    Fl_Input* address_bar = nullptr;
 
-    Sidebar* sidebar;
-    Fl_Group* content_area;
-    Fl_Box* status_bar;
+    Sidebar* sidebar = nullptr;
+    Fl_Group* content_area = nullptr;
+    Fl_Box* status_bar = nullptr;
     Fl_RGB_Image* app_icon = nullptr;
     
     ExplorerTab* active_tab = nullptr;
@@ -59,6 +61,27 @@ private:
     // Dragging state
     int drag_x = 0, drag_y = 0;
     bool dragging = false;
+
+    // Resizing state
+    enum ResizeDir {
+        NONE = 0,
+        LEFT = 1,
+        RIGHT = 2,
+        TOP = 4,
+        BOTTOM = 8,
+        TOP_LEFT = 5,
+        TOP_RIGHT = 6,
+        BOTTOM_LEFT = 9,
+        BOTTOM_RIGHT = 10
+    };
+    int resize_dir = NONE;
+    bool resizing = false;
+    int resize_start_x = 0, resize_start_y = 0;
+    int resize_start_w = 0, resize_start_h = 0;
+    int resize_start_wx = 0, resize_start_wy = 0;
+
+    int GetResizeDir(int x, int y);
+    void SetCursor(int dir);
 
     // Startup Logging
     std::chrono::steady_clock::time_point start_time;

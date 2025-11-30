@@ -147,6 +147,9 @@ ExplorerWindow::ExplorerWindow(int w, int h, const char* title, std::chrono::ste
     
     // Add initial tab
     AddTab("C:/");
+    
+    // Force layout update to match current window size (in case LoadWindowPos changed it)
+    resize(x(), y(), this->w(), this->h());
 }
 
 ExplorerWindow::~ExplorerWindow() {
@@ -155,11 +158,43 @@ ExplorerWindow::~ExplorerWindow() {
 }
 
 int ExplorerWindow::handle(int event) {
+    // Prioritize resize cursor and hit testing
+    if (event == FL_MOVE) {
+        int dir = GetResizeDir(Fl::event_x(), Fl::event_y());
+        if (dir != NONE) {
+            SetCursor(dir);
+            return 1;
+        } else {
+            // Reset cursor if we moved out of border
+            // But we must be careful not to override child cursors (like text input)
+            // If we just call base handle, child might set it.
+            // If child doesn't set it, it remains as previous.
+            // So we set to default, then call base.
+            cursor(FL_CURSOR_DEFAULT);
+        }
+    }
+
     // Let base class handle it first (buttons, tabs, etc.)
-    int ret = Fl_Double_Window::handle(event);
-    if (ret == 1) return 1; // Child handled it
+    // BUT only if we are not resizing. If resizing, we consume events.
+    if (!resizing) {
+        int ret = Fl_Double_Window::handle(event);
+        if (ret == 1) return 1; // Child handled it
+    }
 
     if (event == FL_PUSH) {
+        int dir = GetResizeDir(Fl::event_x(), Fl::event_y());
+        if (dir != NONE) {
+            resizing = true;
+            resize_dir = dir;
+            resize_start_x = Fl::event_x_root();
+            resize_start_y = Fl::event_y_root();
+            resize_start_w = w();
+            resize_start_h = h();
+            resize_start_wx = x();
+            resize_start_wy = y();
+            return 1;
+        }
+
         // Check if click is in title bar area
         if (Fl::event_y() < 35) {
             dragging = true;
@@ -167,16 +202,79 @@ int ExplorerWindow::handle(int event) {
             drag_y = Fl::event_y_root() - y_root();
             return 1;
         }
-    } else if (event == FL_DRAG && dragging) {
-        position(Fl::event_x_root() - drag_x, Fl::event_y_root() - drag_y);
-        return 1;
+    } else if (event == FL_DRAG) {
+        if (resizing) {
+            int dx = Fl::event_x_root() - resize_start_x;
+            int dy = Fl::event_y_root() - resize_start_y;
+            
+            int new_x = resize_start_wx;
+            int new_y = resize_start_wy;
+            int new_w = resize_start_w;
+            int new_h = resize_start_h;
+
+            if (resize_dir & LEFT) {
+                new_x += dx;
+                new_w -= dx;
+            }
+            if (resize_dir & RIGHT) {
+                new_w += dx;
+            }
+            if (resize_dir & TOP) {
+                new_y += dy;
+                new_h -= dy;
+            }
+            if (resize_dir & BOTTOM) {
+                new_h += dy;
+            }
+
+            // Min size constraint
+            if (new_w < 400) new_w = 400;
+            if (new_h < 300) new_h = 300;
+
+            resize(new_x, new_y, new_w, new_h);
+            return 1;
+        }
+
+        if (dragging) {
+            position(Fl::event_x_root() - drag_x, Fl::event_y_root() - drag_y);
+            return 1;
+        }
     } else if (event == FL_RELEASE) {
+        if (resizing) {
+            resizing = false;
+            cursor(FL_CURSOR_DEFAULT);
+            return 1;
+        }
         if (dragging) {
             dragging = false;
             return 1;
         }
+    } else if (event == FL_LEAVE) {
+        cursor(FL_CURSOR_DEFAULT);
     }
-    return ret;
+    return Fl_Double_Window::handle(event);
+}
+
+int ExplorerWindow::GetResizeDir(int x, int y) {
+    int dir = NONE;
+    int border = 5; // Resize border thickness
+
+    if (x < border) dir |= LEFT;
+    if (x > w() - border) dir |= RIGHT;
+    if (y < border) dir |= TOP;
+    if (y > h() - border) dir |= BOTTOM;
+
+    return dir;
+}
+
+void ExplorerWindow::SetCursor(int dir) {
+    switch (dir) {
+        case LEFT: case RIGHT: cursor(FL_CURSOR_WE); break;
+        case TOP: case BOTTOM: cursor(FL_CURSOR_NS); break;
+        case TOP_LEFT: case BOTTOM_RIGHT: cursor(FL_CURSOR_NWSE); break;
+        case TOP_RIGHT: case BOTTOM_LEFT: cursor(FL_CURSOR_NESW); break;
+        default: cursor(FL_CURSOR_DEFAULT); break;
+    }
 }
 
 void ExplorerWindow::show() {
@@ -367,6 +465,64 @@ void ExplorerWindow::CheckStartupTime() {
     
     core::Log("Total startup load time: " + std::to_string(duration) + " ms");
     startup_logged = true;
+}
+
+void ExplorerWindow::resize(int x, int y, int w, int h) {
+    Fl_Double_Window::resize(x, y, w, h);
+    
+    // Layout Constants
+    int title_h = 40;
+    int nav_h = 40;
+    int status_h = 25;
+    int sidebar_w = 200;
+    int btn_w = 45;
+    int btn_h = 30;
+    
+    // 1. Title Bar
+    if (title_bar) {
+        title_bar->resize(0, 0, w, title_h);
+        
+        // Controls
+        int controls_x = w - (btn_w * 3);
+        if (btn_min) btn_min->resize(controls_x, 0, btn_w, btn_h);
+        if (btn_max) btn_max->resize(controls_x + btn_w, 0, btn_w, btn_h);
+        if (btn_close) btn_close->resize(controls_x + (btn_w * 2), 0, btn_w, btn_h);
+        
+        // Tab Bar
+        if (tab_bar) {
+            int tabs_w = controls_x - 10;
+            tab_bar->resize(10, 5, tabs_w, 35);
+        }
+    }
+    
+    // 2. Navigation Area
+    if (nav_area) {
+        nav_area->resize(0, title_h, w, nav_h);
+        if (address_bar) {
+            address_bar->resize(10, title_h + 8, w - 20, 24);
+        }
+    }
+    
+    // 3. Main Content Area
+    int main_y = title_h + nav_h;
+    int main_h = h - main_y - status_h;
+    
+    if (sidebar) {
+        sidebar->resize(0, main_y, sidebar_w, main_h);
+    }
+    
+    if (content_area) {
+        content_area->resize(sidebar_w, main_y, w - sidebar_w, main_h);
+        // Resize active tab if any
+        if (active_tab) {
+            active_tab->resize(content_area->x(), content_area->y(), content_area->w(), content_area->h());
+        }
+    }
+    
+    // 4. Status Bar
+    if (status_bar) {
+        status_bar->resize(0, h - status_h, w, 20);
+    }
 }
 
 }

@@ -1,5 +1,5 @@
 #pragma once
-#include <FL/Fl_Group.H>
+#include <FL/Fl_Scroll.H>
 #include <FL/Fl_Button.H>
 #include <FL/Fl_RGB_Image.H>
 #include <vector>
@@ -9,7 +9,7 @@
 
 namespace ui {
 
-class Sidebar : public Fl_Group {
+class Sidebar : public Fl_Scroll {
 public:
     Sidebar(int x, int y, int w, int h);
     ~Sidebar();
