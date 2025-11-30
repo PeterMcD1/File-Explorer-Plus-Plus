@@ -1,0 +1,21 @@
+# Build directories
+build/
+out/
+bin/
+lib/
+
+# IDE settings
+.vs/
+.vscode/
+*.user
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+*.cmake
+!CMakeLists.txt
+
+# OS
+Thumbs.db
+Desktop.ini
