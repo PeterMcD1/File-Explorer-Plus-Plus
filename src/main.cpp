@@ -5,7 +5,12 @@
 #include <chrono>
 #include <string>
 
+#include <windows.h> // For CoInitialize
+
 int main(int argc, char** argv) {
+    // Initialize COM for Shell APIs
+    CoInitialize(NULL);
+
     auto start_time = std::chrono::high_resolution_clock::now();
 
     Fl::lock();
@@ -19,5 +24,8 @@ int main(int argc, char** argv) {
 
     core::StartLoading("C:/");
 
-    return Fl::run();
+    int result = Fl::run();
+    
+    CoUninitialize();
+    return result;
 }

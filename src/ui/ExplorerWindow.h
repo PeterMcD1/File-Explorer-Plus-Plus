@@ -15,6 +15,7 @@ public:
     void RefreshTable();
     void SetAddress(const char* path);
     void UpdateStatus();
+    void SetAppIcon(Fl_RGB_Image* icon);
     
     // Static callback for Fl::awake
     static void UpdateUICallback(void*);

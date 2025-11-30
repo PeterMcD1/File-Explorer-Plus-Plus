@@ -16,6 +16,14 @@ TEST(IconTests, GetIcon_Directory) {
     ASSERT_NE(icon, nullptr);
 }
 
+TEST(IconTests, GetIcon_DirectoryCaching) {
+    // Different paths should return the same cached icon for directories
+    Fl_RGB_Image* icon1 = ui::IconManager::Get().GetIcon("dir1", true);
+    Fl_RGB_Image* icon2 = ui::IconManager::Get().GetIcon("dir2", true);
+    ASSERT_EQ(icon1, icon2);
+    ASSERT_NE(icon1, nullptr);
+}
+
 TEST(IconTests, GetSpecificIcon_Explorer) {
     // Should return a valid image for explorer.exe
     Fl_RGB_Image* icon = ui::IconManager::Get().GetSpecificIcon("C:\\Windows\\explorer.exe");

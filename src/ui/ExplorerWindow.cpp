@@ -2,15 +2,40 @@
 #include "../core/AppState.h"
 #include "../core/FileSystem.h"
 #include "IconManager.h"
+#include <thread>
+#include <windows.h> // For CoInitialize
 
 namespace ui {
 
-ExplorerWindow::ExplorerWindow(int w, int h, const char* title) : Fl_Double_Window(w, h, title) {
-    // Set App Icon
-    app_icon = IconManager::Get().GetSpecificIcon("C:\\Windows\\explorer.exe");
-    if (app_icon) {
-        this->icon(app_icon);
+// Static callback for setting icon on main thread
+void SetIconCallback(void* data) {
+    auto* pair = static_cast<std::pair<ExplorerWindow*, Fl_RGB_Image*>*>(data);
+    if (pair->first) {
+        pair->first->SetAppIcon(pair->second);
     }
+    delete pair;
+}
+
+// Static callback to start the thread after a delay
+void ScheduledIconLoad(void* data) {
+    ExplorerWindow* win = static_cast<ExplorerWindow*>(data);
+    std::thread([win]() {
+        // Initialize COM for this thread
+        CoInitialize(NULL);
+        
+        Fl_RGB_Image* icon = IconManager::Get().GetSpecificIcon("C:\\Windows\\explorer.exe");
+        
+        CoUninitialize();
+
+        if (icon) {
+            Fl::awake(SetIconCallback, new std::pair<ExplorerWindow*, Fl_RGB_Image*>(win, icon));
+        }
+    }).detach();
+}
+
+ExplorerWindow::ExplorerWindow(int w, int h, const char* title) : Fl_Double_Window(w, h, title) {
+    // Schedule icon loading to run after startup
+    Fl::add_timeout(0.0, ScheduledIconLoad, this);
 
     address_bar = new Fl_Input(10, 10, w - 100, 30);
     address_bar->callback(AddressCallback);
@@ -39,6 +64,13 @@ ExplorerWindow::ExplorerWindow(int w, int h, const char* title) : Fl_Double_Wind
 
 ExplorerWindow::~ExplorerWindow() {
     if (app_icon) delete app_icon;
+}
+
+void ExplorerWindow::SetAppIcon(Fl_RGB_Image* icon) {
+    if (app_icon) delete app_icon; // Remove old if any
+    app_icon = icon;
+    this->icon(app_icon);
+    this->redraw();
 }
 
 void ExplorerWindow::RefreshTable() {

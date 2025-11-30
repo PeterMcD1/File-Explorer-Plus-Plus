@@ -126,7 +126,9 @@ Fl_RGB_Image* IconManager::LoadIconFromSystem(const std::string& path, bool is_d
         flags |= SHGFI_USEFILEATTRIBUTES;
         DWORD attributes = is_dir ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
         
-        if (!is_dir) {
+        if (is_dir) {
+            lookup_path = "directory";
+        } else {
             size_t dot_pos = path.find_last_of('.');
             if (dot_pos != std::string::npos) {
                 lookup_path = "dummy" + path.substr(dot_pos);
@@ -151,5 +153,4 @@ Fl_RGB_Image* IconManager::LoadIconFromSystem(const std::string& path, bool is_d
 
     return nullptr;
 }
-
 }
