@@ -101,8 +101,24 @@ void FileTable::draw_cell(TableContext context, int R, int C, int X, int Y, int 
     }
 }
 
+#include <windows.h>
+#include <shellapi.h>
+
+// ...
+
 int FileTable::handle(int event) {
     if (event == FL_PUSH && Fl::event_clicks()) {
+        // Fl_Table_Row::handle(event) updates callback_row()
+        // We need to call it first to ensure selection is updated?
+        // Actually, FL_PUSH sets the selection.
+        // But Fl::event_clicks() means it's a double click.
+        // Let's rely on callback_row() which should be valid if we clicked a row.
+        // Wait, callback_row() might not be set yet if we intercept FL_PUSH?
+        // Fl_Table_Row handles selection on FL_PUSH.
+        // If we return 1, we consume the event.
+        // Let's call parent handle first?
+        Fl_Table_Row::handle(event);
+        
         int r = callback_row();
         if (r >= 0) {
             std::string path;
@@ -115,11 +131,16 @@ int FileTable::handle(int event) {
                 }
             }
             
-            if (is_dir && !path.empty()) {
-                core::StartLoading(path, tab_context);
+            if (!path.empty()) {
+                if (is_dir) {
+                    core::StartLoading(path, tab_context);
+                } else {
+                    ShellExecuteA(NULL, "open", path.c_str(), NULL, NULL, SW_SHOWNORMAL);
+                }
                 return 1;
             }
         }
+        return 1;
     }
     return Fl_Table_Row::handle(event);
 }
