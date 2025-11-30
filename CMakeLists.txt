@@ -29,6 +29,7 @@ add_library(core_lib STATIC
     src/core/Logger.cpp
     src/core/AppState.cpp
     src/core/FileSystem.cpp
+    src/core/QuickAccess.cpp
 )
 target_include_directories(core_lib PUBLIC src)
 target_include_directories(core_lib PUBLIC 
@@ -68,7 +69,7 @@ FetchContent_MakeAvailable(googletest)
 
 enable_testing()
 
-add_executable(FlashTests tests/FileSystemTests.cpp tests/IconTests.cpp)
+add_executable(FlashTests tests/FileSystemTests.cpp tests/IconTests.cpp tests/UITests.cpp)
 target_link_libraries(FlashTests PRIVATE core_lib ui_lib GTest::gtest_main fltk)
 
 include(GoogleTest)

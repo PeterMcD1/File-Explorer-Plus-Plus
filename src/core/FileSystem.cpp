@@ -1,6 +1,7 @@
 #include "FileSystem.h"
 #include "TabContext.h"
 #include "Logger.h"
+#include "QuickAccess.h"
 #include <FL/Fl.H>
 #include <filesystem>
 #include <thread>
@@ -10,6 +11,8 @@
 #include <vector>
 #include <algorithm>
 #include <cctype>
+#include <shlobj.h>
+#include <windows.h>
 
 namespace fs = std::filesystem;
 
@@ -121,6 +124,10 @@ void LoadDirectoryWorker(std::string path, std::shared_ptr<TabContext> context) 
     Log("Worker finished for: " + path);
 }
 
+#include "QuickAccess.h"
+
+// ...
+
 void StartLoading(const std::string& path, std::shared_ptr<TabContext> context) {
     if (context->is_loading) {
         Log("Skipping load, already loading.");
@@ -129,10 +136,24 @@ void StartLoading(const std::string& path, std::shared_ptr<TabContext> context) 
     context->is_loading = true;
     Log("Requesting load for: " + path);
     
-    // Address bar update is now handled by UI observing the context or explicit UI call
-    // We don't update address bar here anymore because we don't know which tab is active
+    // Track visit
+    QuickAccess::Get().AddVisit(path);
     
     std::thread(LoadDirectoryWorker, path, context).detach();
+}
+
+std::string GetKnownFolderPath(const void* rfid) {
+    PWSTR path = NULL;
+    if (SUCCEEDED(SHGetKnownFolderPath(*(KNOWNFOLDERID*)rfid, 0, NULL, &path))) {
+        std::wstring ws(path);
+        CoTaskMemFree(path);
+        // Convert wstring to string (UTF-8)
+        int size_needed = WideCharToMultiByte(CP_UTF8, 0, &ws[0], (int)ws.size(), NULL, 0, NULL, NULL);
+        std::string strTo(size_needed, 0);
+        WideCharToMultiByte(CP_UTF8, 0, &ws[0], (int)ws.size(), &strTo[0], size_needed, NULL, NULL);
+        return strTo;
+    }
+    return "";
 }
 
 }

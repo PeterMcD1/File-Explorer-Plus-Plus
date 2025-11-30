@@ -1,5 +1,6 @@
 #include "Sidebar.h"
 #include "IconManager.h"
+#include "../core/QuickAccess.h"
 #include <shlobj.h>
 #include <windows.h>
 #include <iostream>
@@ -13,16 +14,18 @@ Sidebar::Sidebar(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
     
     int cur_y = y + 10;
     
-    // Common Directories
-    AddButton("Desktop", GetKnownFolderPath(&FOLDERID_Desktop), cur_y);
-    AddButton("Documents", GetKnownFolderPath(&FOLDERID_Documents), cur_y);
-    AddButton("Downloads", GetKnownFolderPath(&FOLDERID_Downloads), cur_y);
-    AddButton("Music", GetKnownFolderPath(&FOLDERID_Music), cur_y);
-    AddButton("Pictures", GetKnownFolderPath(&FOLDERID_Pictures), cur_y);
-    AddButton("Videos", GetKnownFolderPath(&FOLDERID_Videos), cur_y);
-    
-    // Drives
-    AddButton("Local Disk (C:)", "C:/", cur_y);
+    // Quick Access
+    auto paths = core::QuickAccess::Get().GetTopPaths(10);
+    for (const auto& path : paths) {
+        // Extract label from path
+        std::string label = path;
+        if (label.back() == '/' || label.back() == '\\') label.pop_back();
+        size_t pos = label.find_last_of("/\\");
+        if (pos != std::string::npos) label = label.substr(pos + 1);
+        if (label.empty()) label = path;
+        
+        AddButton(label.c_str(), path, cur_y);
+    }
     
     end();
     
