@@ -22,13 +22,51 @@ set(FLTK_BUILD_HTML_DOCS OFF CACHE BOOL " " FORCE)
 set(FLTK_BUILD_PDF_DOCS OFF CACHE BOOL " " FORCE)
 
 FetchContent_MakeAvailable(fltk)
+link_directories(${fltk_BINARY_DIR}/lib)
 
-add_executable(FlashExplorer WIN32 main.cpp)
+# --- Core Library ---
+add_library(core_lib STATIC
+    src/core/Logger.cpp
+    src/core/AppState.cpp
+    src/core/FileSystem.cpp
+)
+target_include_directories(core_lib PUBLIC src)
+target_include_directories(core_lib PUBLIC 
+    ${fltk_SOURCE_DIR} 
+    ${FLTK_SOURCE_DIR}
+    ${fltk_BINARY_DIR}
+    ${FLTK_BINARY_DIR}
+)
+target_link_libraries(core_lib PUBLIC fltk) # FileSystem uses Fl::awake
 
-# Link FLTK
-target_link_libraries(FlashExplorer PRIVATE fltk)
+# --- UI Library ---
+add_library(ui_lib STATIC
+    src/ui/FileTable.cpp
+    src/ui/ExplorerWindow.cpp
+    src/ui/IconManager.cpp
+)
+target_include_directories(ui_lib PUBLIC src)
+target_link_libraries(ui_lib PUBLIC core_lib fltk user32 shell32 gdi32)
 
-# Copy DLLs if necessary (though we prefer static, FLTK defaults to static usually)
-if(WIN32)
-    target_compile_definitions(FlashExplorer PRIVATE WIN32)
-endif()
+# --- Main Executable ---
+add_executable(FlashExplorer WIN32 src/main.cpp)
+target_link_libraries(FlashExplorer PRIVATE ui_lib core_lib fltk)
+
+# --- Testing ---
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  GIT_REPOSITORY https://github.com/google/googletest.git
+  GIT_TAG v1.14.0
+)
+# For Windows: Prevent overriding the parent project's compiler/linker settings
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
+
+enable_testing()
+
+add_executable(FlashTests tests/FileSystemTests.cpp tests/IconTests.cpp)
+target_link_libraries(FlashTests PRIVATE core_lib ui_lib GTest::gtest_main fltk)
+
+include(GoogleTest)
+gtest_discover_tests(FlashTests)
