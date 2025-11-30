@@ -8,6 +8,7 @@
 #include <shellapi.h>
 #include <FL/Fl_Menu_Item.H>
 #include <FL/fl_ask.H>
+#include "../core/QuickAccess.h"
 
 namespace ui {
 
@@ -217,14 +218,40 @@ int FileTable::handle(int event) {
 }
 
 void FileTable::ShowContextMenu(const std::string& path, bool is_dir) {
+    bool is_pinned = false;
+    if (is_dir) {
+        is_pinned = core::QuickAccess::Get().IsPinned(path);
+    }
+
     ::Fl_Menu_Item menu[] = {
         { "Open", 0, 0, 0, 0 },
         { "Copy Path", 0, 0, 0, 0 },
         { "Properties", 0, 0, 0, 0 },
+        { is_dir ? (is_pinned ? "Unpin from Quick Access" : "Pin to Quick Access") : 0, 0, 0, 0, 0 },
         { 0 }
     };
     
-    const ::Fl_Menu_Item* m = menu->popup(Fl::event_x(), Fl::event_y(), 0, 0, 0);
+    // Filter out null items if not dir (handled by 0 label?)
+    // Fl_Menu_Item with 0 label terminates the list.
+    // If we want optional item, we need to construct array dynamically or use flags.
+    // But here, if !is_dir, the label is 0, so it terminates early?
+    // No, "Properties" is before it.
+    // If !is_dir, the 4th item has label 0. So it terminates there.
+    // But we want "Properties" to show.
+    // So we should construct the menu carefully.
+    
+    // Better approach:
+    std::vector<::Fl_Menu_Item> items;
+    items.push_back({ "Open", 0, 0, 0, 0 });
+    items.push_back({ "Copy Path", 0, 0, 0, 0 });
+    items.push_back({ "Properties", 0, 0, 0, 0 });
+    
+    if (is_dir) {
+        items.push_back({ is_pinned ? "Unpin from Quick Access" : "Pin to Quick Access", 0, 0, 0, 0 });
+    }
+    items.push_back({ 0 });
+    
+    const ::Fl_Menu_Item* m = items.data()->popup(Fl::event_x(), Fl::event_y(), 0, 0, 0);
     if (m) {
         std::string label = m->label() ? m->label() : "";
         if (label == "Open") {
@@ -237,6 +264,10 @@ void FileTable::ShowContextMenu(const std::string& path, bool is_dir) {
             CopyPathToClipboard(path);
         } else if (label == "Properties") {
             ShowProperties(path);
+        } else if (label == "Pin to Quick Access") {
+            core::QuickAccess::Get().Pin(path);
+        } else if (label == "Unpin from Quick Access") {
+            core::QuickAccess::Get().Unpin(path);
         }
     }
 }

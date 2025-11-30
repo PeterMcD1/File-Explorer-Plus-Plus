@@ -69,7 +69,7 @@ FetchContent_MakeAvailable(googletest)
 
 enable_testing()
 
-add_executable(FlashTests tests/FileSystemTests.cpp tests/IconTests.cpp tests/UITests.cpp)
+add_executable(FlashTests tests/FileSystemTests.cpp tests/IconTests.cpp tests/UITests.cpp tests/QuickAccessTests.cpp)
 target_link_libraries(FlashTests PRIVATE core_lib ui_lib GTest::gtest_main fltk)
 
 include(GoogleTest)

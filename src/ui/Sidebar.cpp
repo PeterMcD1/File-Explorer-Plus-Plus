@@ -5,6 +5,7 @@
 #include <windows.h>
 #include <iostream>
 #include <FL/Fl.H>
+#include <FL/fl_draw.H>
 
 namespace ui {
 
@@ -12,24 +13,102 @@ Sidebar::Sidebar(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
     box(FL_FLAT_BOX);
     color(FL_LIGHT3); // Slightly darker background
     
-    int cur_y = y + 10;
-    
-    // Quick Access
-    auto paths = core::QuickAccess::Get().GetTopPaths(10);
-    for (const auto& path : paths) {
-        // Extract label from path
-        std::string label = path;
-        if (label.back() == '/' || label.back() == '\\') label.pop_back();
-        size_t pos = label.find_last_of("/\\");
-        if (pos != std::string::npos) label = label.substr(pos + 1);
-        if (label.empty()) label = path;
-        
-        AddButton(label.c_str(), path, cur_y);
-    }
+    Refresh();
     
     end();
     
-    // Defer icon loading to improve startup time
+    // Register callback
+    core::QuickAccess::Get().SetUpdateCallback([this]() {
+        // We need to run this on main thread
+        Fl::awake([](void* data) {
+            static_cast<Sidebar*>(data)->Refresh();
+        }, this);
+    });
+}
+
+
+
+Sidebar::SidebarButton::SidebarButton(int x, int y, int w, int h, const char* label)
+    : Fl_Button(x, y, w, h, label) {
+    box(FL_FLAT_BOX);
+    color(FL_LIGHT3);
+    selection_color(FL_SELECTION_COLOR);
+    clear_visible_focus();
+    align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+}
+
+void Sidebar::SidebarButton::draw() {
+    // Draw background
+    if (value()) {
+        fl_color(selection_color());
+    } else {
+        fl_color(color());
+    }
+    fl_rectf(x(), y(), w(), h());
+    
+    // Draw icon
+    int text_x = x() + 5;
+    if (icon) {
+        // Center icon vertically
+        int iy = y() + (h() - icon->h()) / 2;
+        icon->draw(x() + 5, iy);
+        text_x += icon->w() + 5;
+    }
+    
+    // Draw text
+    fl_color(labelcolor());
+    fl_font(labelfont(), labelsize());
+    fl_draw(label(), text_x, y(), w() - text_x - 20, h(), FL_ALIGN_LEFT);
+    
+    // Draw pin if pinned
+    if (pinned) {
+        fl_draw("📌", x() + w() - 25, y(), 20, h(), FL_ALIGN_RIGHT);
+    }
+}
+
+void Sidebar::Refresh() {
+    this->begin(); // Ensure buttons are added to this group
+
+    // Clear existing buttons
+    for (auto& item : items) {
+        delete item.btn;
+    }
+    items.clear();
+    
+    // We do NOT clear icon_cache here. We keep it.
+    // We also do not clear `icons` vector if it holds ownership of cached icons?
+    // If `icon_cache` holds pointers to `icons` elements, we must be careful.
+    // Let's say `icons` owns the images.
+    // If we clear `icons`, `icon_cache` becomes invalid.
+    // So we should NOT clear `icons` if we want to cache.
+    // But we need to avoid duplicates in `icons` if we reload.
+    // Actually, `IconManager` returns new images for specific icons.
+    // We should manage ownership in `icon_cache` directly if possible, or `icons`.
+    // Let's make `icon_cache` own them? No, `std::map` values are pointers.
+    // Let's keep `icons` as the owner list, but only add NEW icons to it.
+    
+    int cur_y = y() + 10;
+    
+    // Quick Access
+    auto items_list = core::QuickAccess::Get().GetItems(15);
+    for (const auto& item : items_list) {
+        std::string label = item.path;
+        if (label.back() == '/' || label.back() == '\\') label.pop_back();
+        size_t pos = label.find_last_of("/\\");
+        if (pos != std::string::npos) label = label.substr(pos + 1);
+        if (label.empty()) label = item.path;
+        
+        // No pin in label anymore
+        
+        AddButton(label.c_str(), item.path, cur_y, item.pinned);
+    }
+    
+    this->end(); // Stop adding to this group
+    
+    redraw();
+    
+    // Defer icon loading
+    Fl::remove_timeout(LoadIconsCallback, this);
     Fl::add_timeout(0.1, LoadIconsCallback, this);
 }
 
@@ -38,25 +117,25 @@ Sidebar::~Sidebar() {
         delete icon;
     }
     icons.clear();
+    core::QuickAccess::Get().SetUpdateCallback(nullptr);
 }
 
 void Sidebar::SetNavigateCallback(std::function<void(const std::string&)> cb) {
     on_navigate = cb;
 }
 
-void Sidebar::AddButton(const char* label, const std::string& path, int& cur_y) {
+void Sidebar::AddButton(const char* label, const std::string& path, int& cur_y, bool pinned) {
     if (path.empty()) return;
     
-    Fl_Button* btn = new Fl_Button(x() + 10, cur_y, w() - 20, 30, label);
+    SidebarButton* btn = new SidebarButton(x() + 10, cur_y, w() - 20, 30, label);
     btn->copy_label(label);
+    btn->pinned = pinned;
     
-    // Align icon left, text right of icon
-    btn->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE | FL_ALIGN_IMAGE_NEXT_TO_TEXT);
-    
-    btn->box(FL_FLAT_BOX);
-    btn->color(FL_LIGHT3);
-    btn->selection_color(FL_SELECTION_COLOR);
-    btn->clear_visible_focus();
+    // Check cache
+    auto it = icon_cache.find(path);
+    if (it != icon_cache.end()) {
+        btn->icon = it->second;
+    }
     
     std::string* path_ptr = new std::string(path);
     btn->callback([](Fl_Widget* w, void* data) {
@@ -80,10 +159,21 @@ void Sidebar::LoadIconsCallback(void* data) {
 
 void Sidebar::LoadIcons() {
     for (auto& item : items) {
+        if (item.btn->icon) continue; // Already has icon
+        
+        // Check cache again (maybe loaded by another item?)
+        auto it = icon_cache.find(item.path);
+        if (it != icon_cache.end()) {
+            item.btn->icon = it->second;
+            item.btn->redraw();
+            continue;
+        }
+        
         Fl_RGB_Image* icon = IconManager::Get().GetSpecificIcon(item.path);
         if (icon) {
-            item.btn->image(icon);
-            icons.push_back(icon);
+            item.btn->icon = icon;
+            icons.push_back(icon); // Take ownership
+            icon_cache[item.path] = icon; // Add to cache
             item.btn->redraw();
         }
     }
