@@ -10,6 +10,7 @@ ExplorerTab::ExplorerTab(int x, int y, int w, int h)
     context = std::make_shared<core::TabContext>();
     context->on_update = [this]() {
         this->Refresh();
+        if (this->on_state_changed) this->on_state_changed();
     };
 
     // File Table (Full space)

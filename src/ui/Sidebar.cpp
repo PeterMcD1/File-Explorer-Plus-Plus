@@ -12,7 +12,7 @@ namespace ui {
 
 Sidebar::Sidebar(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
     box(FL_FLAT_BOX);
-    color(FL_LIGHT3); // Slightly darker background
+    color(fl_rgb_color(37, 37, 38)); // #252526 Darker gray
     
     Refresh();
     
@@ -30,8 +30,9 @@ Sidebar::Sidebar(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
 Sidebar::SidebarButton::SidebarButton(int x, int y, int w, int h, const char* label)
     : Fl_Button(x, y, w, h, label) {
     box(FL_FLAT_BOX);
-    color(FL_LIGHT3);
-    selection_color(FL_SELECTION_COLOR);
+    color(fl_rgb_color(37, 37, 38)); // Match sidebar background
+    selection_color(fl_rgb_color(0, 120, 212)); // #0078D4 Blue selection
+    labelcolor(FL_WHITE);
     clear_visible_focus();
     align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
 }

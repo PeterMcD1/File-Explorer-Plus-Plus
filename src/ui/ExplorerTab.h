@@ -21,6 +21,10 @@ public:
     
     // Callback for close request (from parent window logic if needed, but now handled by TabBar)
     std::function<void(ExplorerTab*)> on_close;
+    
+    // Callback for state changes (loading finished, etc.)
+    std::function<void()> on_state_changed;
+    void SetStateChangeCallback(std::function<void()> cb) { on_state_changed = cb; }
 
 private:
     FileTable* file_table;

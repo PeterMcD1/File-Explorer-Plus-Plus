@@ -5,7 +5,14 @@
 
 namespace core {
 
-static std::ofstream g_log_file("flash_log.txt", std::ios::out | std::ios::app);
+static std::ofstream g_log_file;
+
+void Init(const std::string& path) {
+    if (g_log_file.is_open()) {
+        g_log_file.close();
+    }
+    g_log_file.open(path, std::ios::out | std::ios::app);
+}
 
 void Log(const std::string& msg) {
     if (g_log_file.is_open()) {

@@ -35,12 +35,17 @@ void FileTable::draw_cell(TableContext context, int R, int C, int X, int Y, int 
 
     case CONTEXT_COL_HEADER:
         fl_push_clip(X, Y, W, H);
-        fl_draw_box(FL_THIN_UP_BOX, X, Y, W, H, FL_GRAY);
-        fl_color(FL_BLACK);
+        fl_draw_box(FL_FLAT_BOX, X, Y, W, H, fl_rgb_color(45, 45, 45)); // #2D2D2D Header
+        // Draw separator line
+        fl_color(fl_rgb_color(60, 60, 60));
+        fl_line(X, Y + H - 1, X + W, Y + H - 1);
+        fl_line(X + W - 1, Y, X + W - 1, Y + H);
+        
+        fl_color(FL_WHITE);
         switch (C) {
-        case 0: fl_draw("Name", X, Y, W, H, FL_ALIGN_CENTER); break;
-        case 1: fl_draw("Size", X, Y, W, H, FL_ALIGN_CENTER); break;
-        case 2: fl_draw("Type", X, Y, W, H, FL_ALIGN_CENTER); break;
+        case 0: fl_draw("Name", X + 10, Y, W - 10, H, FL_ALIGN_LEFT); break;
+        case 1: fl_draw("Size", X + 10, Y, W - 10, H, FL_ALIGN_LEFT); break;
+        case 2: fl_draw("Type", X + 10, Y, W - 10, H, FL_ALIGN_LEFT); break;
         }
         fl_pop_clip();
         return;
@@ -49,7 +54,11 @@ void FileTable::draw_cell(TableContext context, int R, int C, int X, int Y, int 
         fl_push_clip(X, Y, W, H);
         
         // Background
-        fl_color(FL_WHITE);
+        if (row_selected(R)) {
+            fl_color(fl_rgb_color(0, 120, 212)); // #0078D4 Blue selection
+        } else {
+            fl_color(fl_rgb_color(32, 32, 32)); // #202020 Background
+        }
         fl_rectf(X, Y, W, H);
 
         // Data
@@ -81,22 +90,25 @@ void FileTable::draw_cell(TableContext context, int R, int C, int X, int Y, int 
                         text_x += 15;
                     }
                     
-                    fl_color(FL_BLACK);
+                    fl_color(FL_WHITE);
                     fl_draw(entry.name.c_str(), text_x, Y, W - (text_x - X), H, FL_ALIGN_LEFT);
                 }
                 else if (C == 1) {
-                    fl_color(FL_BLACK);
-                    fl_draw(entry.size_str.c_str(), X, Y, W, H, FL_ALIGN_LEFT);
+                    fl_color(fl_rgb_color(200, 200, 200)); // Light gray text for size
+                    fl_draw(entry.size_str.c_str(), X + 10, Y, W - 10, H, FL_ALIGN_LEFT);
                 }
                 else if (C == 2) {
-                    fl_color(FL_BLACK);
-                    fl_draw(entry.is_dir ? "DIR" : "FILE", X, Y, W, H, FL_ALIGN_LEFT);
+                    fl_color(fl_rgb_color(200, 200, 200)); // Light gray text for type
+                    fl_draw(entry.is_dir ? "File folder" : "File", X + 10, Y, W - 10, H, FL_ALIGN_LEFT);
                 }
             }
         }
         
-        fl_color(FL_LIGHT2);
-        fl_rect(X, Y, W, H);
+        // Selection border?
+        if (row_selected(R)) {
+            fl_color(fl_rgb_color(50, 140, 220));
+            fl_rect(X, Y, W, H);
+        }
         
         fl_pop_clip();
         return;

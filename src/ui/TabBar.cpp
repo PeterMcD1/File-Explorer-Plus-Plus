@@ -11,14 +11,16 @@ TabButton::TabButton(int x, int y, int w, int h, const char* label)
     
     begin(); // Add children to this group
     
-    box(FL_UP_BOX);
-    color(FL_LIGHT2); // Default inactive color
+    box(FL_FLAT_BOX); // Flat box for tabs
+    color(fl_rgb_color(45, 45, 45)); // Default inactive color (matches title bar)
     
     // Close Button (Right aligned)
     int close_size = 16;
     int pad = 4;
     close_btn = new Fl_Button(x + w - close_size - pad, y + (h - close_size) / 2, close_size, close_size, "x"); // Small cross
     close_btn->box(FL_FLAT_BOX);
+    close_btn->color(fl_rgb_color(45, 45, 45)); // Match background
+    close_btn->labelcolor(fl_rgb_color(180, 180, 180));
     close_btn->clear_visible_focus();
     close_btn->tooltip("Close Tab");
     
@@ -27,6 +29,7 @@ TabButton::TabButton(int x, int y, int w, int h, const char* label)
     label_box->copy_label(label);
     label_box->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
     label_box->labelsize(12);
+    label_box->labelcolor(fl_rgb_color(180, 180, 180)); // Inactive text color
     
     end();
 }
@@ -34,11 +37,17 @@ TabButton::TabButton(int x, int y, int w, int h, const char* label)
 void TabButton::SetActive(bool active) {
     is_active = active;
     if (active) {
-        color(FL_WHITE);
+        color(fl_rgb_color(56, 56, 56)); // Active color (matches nav area)
         label_box->labelfont(FL_BOLD);
+        label_box->labelcolor(FL_WHITE);
+        close_btn->color(fl_rgb_color(56, 56, 56));
+        close_btn->labelcolor(FL_WHITE);
     } else {
-        color(FL_LIGHT2);
+        color(fl_rgb_color(45, 45, 45)); // Inactive color
         label_box->labelfont(FL_HELVETICA);
+        label_box->labelcolor(fl_rgb_color(180, 180, 180));
+        close_btn->color(fl_rgb_color(45, 45, 45));
+        close_btn->labelcolor(fl_rgb_color(180, 180, 180));
     }
     redraw();
 }
@@ -77,10 +86,12 @@ int TabButton::handle(int event) {
 TabBar::TabBar(int x, int y, int w, int h) 
     : Fl_Group(x, y, w, h) {
     box(FL_FLAT_BOX);
-    color(FL_LIGHT3); // Background for tab strip
+    color(fl_rgb_color(45, 45, 45)); // Background for tab strip (matches title bar)
     
     add_btn = new Fl_Button(x, y + 2, 24, h - 4, "+");
-    add_btn->box(FL_THIN_UP_BOX);
+    add_btn->box(FL_FLAT_BOX);
+    add_btn->color(fl_rgb_color(45, 45, 45));
+    add_btn->labelcolor(FL_WHITE);
     add_btn->clear_visible_focus();
     add_btn->callback([](Fl_Widget*, void* data) {
         auto func = (std::function<void()>*)data;

@@ -2,6 +2,7 @@
 #include "ExplorerWindow.h"
 #include "../core/AppState.h"
 #include "../core/FileSystem.h"
+#include "../core/Logger.h"
 #include "IconManager.h"
 #include <thread>
 #include <windows.h> // For CoInitialize
@@ -37,9 +38,8 @@ void ScheduledIconLoad(void* data) {
     }).detach();
 }
 
-// ... (Includes and static callbacks remain similar)
-
-ExplorerWindow::ExplorerWindow(int w, int h, const char* title) : Fl_Double_Window(w, h, title) {
+ExplorerWindow::ExplorerWindow(int w, int h, const char* title, std::chrono::steady_clock::time_point start_time) 
+    : Fl_Double_Window(w, h, title), start_time(start_time) {
     // Remove OS border
     border(0);
     
@@ -54,10 +54,10 @@ ExplorerWindow::ExplorerWindow(int w, int h, const char* title) : Fl_Double_Wind
     }
 
     // --- Title Bar Area (Top) ---
-    int title_h = 35;
+    int title_h = 40;
     title_bar = new Fl_Group(0, 0, w, title_h);
     title_bar->box(FL_FLAT_BOX);
-    title_bar->color(fl_rgb_color(240, 240, 240)); // Light gray
+    title_bar->color(fl_rgb_color(45, 45, 45)); // #2D2D2D
     
     // Window Controls (Right)
     int btn_w = 45;
@@ -66,23 +66,25 @@ ExplorerWindow::ExplorerWindow(int w, int h, const char* title) : Fl_Double_Wind
     
     btn_min = new Fl_Button(controls_x, 0, btn_w, btn_h, "_");
     btn_min->box(FL_FLAT_BOX);
+    btn_min->color(fl_rgb_color(45, 45, 45));
+    btn_min->labelcolor(FL_WHITE);
     btn_min->callback(WindowControlCallback, this);
     
     btn_max = new Fl_Button(controls_x + btn_w, 0, btn_w, btn_h, "[]");
     btn_max->box(FL_FLAT_BOX);
+    btn_max->color(fl_rgb_color(45, 45, 45));
+    btn_max->labelcolor(FL_WHITE);
     btn_max->callback(WindowControlCallback, this);
     
     btn_close = new Fl_Button(controls_x + (btn_w * 2), 0, btn_w, btn_h, "X");
     btn_close->box(FL_FLAT_BOX);
-    btn_close->color(fl_rgb_color(232, 17, 35)); // Red
+    btn_close->color(fl_rgb_color(45, 45, 45));
     btn_close->labelcolor(FL_WHITE);
     btn_close->callback(WindowControlCallback, this);
     
     // Tab Bar (Left of controls)
-    // Tabs should start from left, maybe after an icon or just left.
-    // Let's put them at x=10.
     int tabs_w = controls_x - 10;
-    tab_bar = new TabBar(10, 5, tabs_w, 30); // Slightly offset y
+    tab_bar = new TabBar(10, 5, tabs_w, 35);
     tab_bar->on_tab_selected = [this](void* data) {
         this->SetActiveTab((ExplorerTab*)data);
     };
@@ -94,23 +96,21 @@ ExplorerWindow::ExplorerWindow(int w, int h, const char* title) : Fl_Double_Wind
     };
     
     title_bar->end();
-    title_bar->resizable(tab_bar); // Allow tabs to expand? No, TabBar handles scrolling?
-    // Actually TabBar is a Scroll? Yes.
+    title_bar->resizable(tab_bar);
     
     // --- Navigation Area (Below Title Bar) ---
     int nav_h = 40;
     nav_area = new Fl_Group(0, title_h, w, nav_h);
     nav_area->box(FL_FLAT_BOX);
-    nav_area->color(FL_WHITE);
+    nav_area->color(fl_rgb_color(56, 56, 56)); // #383838 Slightly lighter than title bar
     
     // Address Bar
-    address_bar = new Fl_Input(10, title_h + 8, w - 80, 24);
+    address_bar = new Fl_Input(10, title_h + 8, w - 20, 24);
+    address_bar->box(FL_FLAT_BOX);
+    address_bar->color(fl_rgb_color(51, 51, 51)); // #333333
+    address_bar->textcolor(FL_WHITE);
     address_bar->callback(AddressCallback, this);
     address_bar->when(FL_WHEN_ENTER_KEY);
-    
-    // Go Button
-    go_btn = new Fl_Button(w - 65, title_h + 8, 55, 24, "Go");
-    go_btn->callback(AddressCallback, this);
     
     nav_area->end();
     nav_area->resizable(address_bar);
@@ -120,7 +120,7 @@ ExplorerWindow::ExplorerWindow(int w, int h, const char* title) : Fl_Double_Wind
     int main_h = h - main_y - 25; // Minus status bar
     
     // Sidebar (Left)
-    int sidebar_w = 180;
+    int sidebar_w = 200;
     sidebar = new Sidebar(0, main_y, sidebar_w, main_h);
     sidebar->SetNavigateCallback([this](const std::string& path) {
         this->Navigate(path.c_str());
@@ -137,19 +137,9 @@ ExplorerWindow::ExplorerWindow(int w, int h, const char* title) : Fl_Double_Wind
     status_bar = new Fl_Box(0, h - 25, w, 20, "Ready");
     status_bar->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
     status_bar->box(FL_FLAT_BOX);
-    status_bar->color(fl_rgb_color(240, 240, 240));
+    status_bar->color(fl_rgb_color(45, 45, 45)); // #2D2D2D
+    status_bar->labelcolor(FL_WHITE);
 
-    // Resizing logic
-    // We want content_area to resize, sidebar fixed width.
-    // And address bar to resize horizontally.
-    // This is tricky with flat groups.
-    // We can use a tile or just rely on Fl_Group resizable.
-    // If we set resizable(content_area), then sidebar stays fixed?
-    // But content_area is not direct child of window, it is sibling of sidebar.
-    // Wait, they are all children of window.
-    // We need a group to hold sidebar + content?
-    // Let's keep it simple.
-    
     resizable(content_area);
     end();
     
@@ -212,11 +202,6 @@ void ExplorerWindow::WindowControlCallback(Fl_Widget* w, void* data) {
         win->iconize();
     } else if (w == win->btn_max) {
         if (win->w() == Fl::w() && win->h() == Fl::h()) {
-            // Restore (not easily supported in FLTK without saving rect)
-            // For now, just toggle fullscreen-ish or do nothing if already max
-            // FLTK doesn't have a simple "restore" from maximize if we are borderless.
-            // We'd need to save previous bounds.
-            // Let's skip restore for now or just toggle fullscreen.
             win->fullscreen_off(100, 100, 800, 600); // Dummy restore
         } else {
             win->fullscreen();
@@ -244,14 +229,22 @@ void ExplorerWindow::AddTab(const char* path) {
     content_area->add(tab);
     content_area->end();
     
-    // Hook up update callback
-    auto context = tab->GetContext();
-    context->on_update = [this, tab]() {
-        tab->Refresh();
+    // Hook up state change callback (for UI refresh and logging)
+    tab->SetStateChangeCallback([this, tab]() {
+        // Refresh UI if this is the active tab
         if (this->active_tab == tab) {
             this->RefreshUI();
         }
-    };
+
+        // Check if loading finished (Startup Logging)
+        if (!startup_logged) {
+            auto context = tab->GetContext();
+            std::lock_guard<std::mutex> lock(context->mutex);
+            if (!context->is_loading) {
+                CheckStartupTime();
+            }
+        }
+    });
     
     tab->Navigate(path);
     
@@ -364,6 +357,16 @@ bool ExplorerWindow::LoadWindowPos() {
         }
     }
     return false;
+}
+
+void ExplorerWindow::CheckStartupTime() {
+    if (startup_logged) return;
+    
+    auto now = std::chrono::steady_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - start_time).count();
+    
+    core::Log("Total startup load time: " + std::to_string(duration) + " ms");
+    startup_logged = true;
 }
 
 }

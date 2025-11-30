@@ -9,12 +9,13 @@
 #include "Sidebar.h"
 #include <memory>
 #include <vector>
+#include <chrono>
 
 namespace ui {
 
 class ExplorerWindow : public Fl_Double_Window {
 public:
-    ExplorerWindow(int w, int h, const char* title);
+    ExplorerWindow(int w, int h, const char* title, std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now());
     ~ExplorerWindow();
     
     void RefreshUI(); // Updates status from active tab
@@ -43,7 +44,6 @@ private:
     // Navigation Area
     Fl_Group* nav_area;
     Fl_Input* address_bar;
-    Fl_Button* go_btn;
 
     Sidebar* sidebar;
     Fl_Group* content_area;
@@ -59,6 +59,11 @@ private:
     // Dragging state
     int drag_x = 0, drag_y = 0;
     bool dragging = false;
+
+    // Startup Logging
+    std::chrono::steady_clock::time_point start_time;
+    bool startup_logged = false;
+    void CheckStartupTime();
 };
 
 }

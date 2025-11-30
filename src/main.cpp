@@ -4,23 +4,36 @@
 #include <FL/Fl.H>
 #include <chrono>
 #include <string>
-
 #include <windows.h> // For CoInitialize
 
 int main(int argc, char** argv) {
-    // Initialize COM for Shell APIs
-    CoInitialize(NULL);
+    // Capture start time
+    auto start_time = std::chrono::steady_clock::now();
 
-    auto start_time = std::chrono::high_resolution_clock::now();
+    // Initialize COM for Shell APIs
+    HRESULT hr = CoInitialize(NULL);
+    
+    // Set DPI awareness
+    SetProcessDPIAware();
 
     Fl::lock();
 
-    ui::ExplorerWindow window(800, 600, "Flash Explorer");
-    window.show();
+    // Initialize Logger
+    std::string logPath = core::GetConfigDir() + "\\flash_log.txt";
+    core::Init(logPath);
+    core::Log("Application started.");
 
-    auto end_time = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
-    core::Log("Startup time: " + std::to_string(duration) + " ms");
+    // Modernize UI
+    Fl::scheme("gtk+");
+    Fl::set_font(FL_HELVETICA, "Segoe UI");
+    
+    // Dark Theme Global Colors
+    Fl::background(32, 32, 32); // #202020
+    Fl::foreground(224, 224, 224); // #E0E0E0
+    Fl::background2(45, 45, 45); // #2D2D2D (Input fields, etc.)
+
+    ui::ExplorerWindow window(800, 600, "Flash Explorer", start_time);
+    window.show();
 
     int result = Fl::run();
     
