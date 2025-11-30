@@ -24,8 +24,13 @@ TabButton::TabButton(int x, int y, int w, int h, const char* label)
     close_btn->clear_visible_focus();
     close_btn->tooltip("Close Tab");
     
+    // Icon Box (Left aligned)
+    int icon_size = 16;
+    icon_box = new Fl_Box(x + pad, y + (h - icon_size) / 2, icon_size, icon_size);
+    icon_box->box(FL_NO_BOX);
+    
     // Label (Left aligned, takes remaining space)
-    label_box = new Fl_Box(x + pad, y, w - close_size - pad * 3, h, label);
+    label_box = new Fl_Box(x + pad + icon_size + pad, y, w - close_size - pad * 4 - icon_size, h, label);
     label_box->copy_label(label);
     label_box->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
     label_box->labelsize(12);
@@ -55,6 +60,17 @@ void TabButton::SetActive(bool active) {
 void TabButton::SetLabel(const char* label) {
     label_box->copy_label(label);
     label_box->redraw();
+}
+
+void TabButton::SetIcon(Fl_RGB_Image* icon) {
+    if (icon) {
+        // Scale if needed? For now assume 16x16 or let Fl_Box handle it (it doesn't scale auto)
+        // Ideally we should scale to 16x16
+        icon_box->image(icon);
+    } else {
+        icon_box->image(nullptr);
+    }
+    icon_box->redraw();
 }
 
 void TabButton::SetCloseCallback(std::function<void()> cb) {
@@ -144,6 +160,15 @@ void TabBar::UpdateTabLabel(void* data, const char* label) {
     for (auto& tab : tabs) {
         if (tab.data == data) {
             tab.btn->SetLabel(label);
+            break;
+        }
+    }
+}
+
+void TabBar::UpdateTabIcon(void* data, Fl_RGB_Image* icon) {
+    for (auto& tab : tabs) {
+        if (tab.data == data) {
+            tab.btn->SetIcon(icon);
             break;
         }
     }

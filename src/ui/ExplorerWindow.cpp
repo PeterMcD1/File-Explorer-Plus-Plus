@@ -342,6 +342,22 @@ void ExplorerWindow::AddTab(const char* path) {
                 CheckStartupTime();
             }
         }
+        
+        // Update tab title
+        auto context = tab->GetContext();
+        std::string label = context->current_path;
+        if (label.empty()) label = "New Tab";
+        else {
+            if (label.back() == '/' || label.back() == '\\') label.pop_back();
+            size_t pos = label.find_last_of("/\\");
+            if (pos != std::string::npos) label = label.substr(pos + 1);
+        }
+        tab_bar->UpdateTabLabel(tab, label.c_str());
+    });
+    
+    // Set icon change callback
+    tab->SetIconChangeCallback([this, tab](Fl_RGB_Image* icon) {
+        tab_bar->UpdateTabIcon(tab, icon);
     });
     
     tab->Navigate(path);

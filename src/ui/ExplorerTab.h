@@ -2,6 +2,7 @@
 #include <FL/Fl_Group.H>
 #include <FL/Fl_Input.H>
 #include <FL/Fl_Button.H>
+#include <FL/Fl_RGB_Image.H>
 #include <memory>
 #include "../core/TabContext.h"
 #include "FileTable.h"
@@ -26,9 +27,15 @@ public:
     std::function<void()> on_state_changed;
     void SetStateChangeCallback(std::function<void()> cb) { on_state_changed = cb; }
 
+    // Callback for icon changes
+    std::function<void(Fl_RGB_Image*)> on_icon_changed;
+    void SetIconChangeCallback(std::function<void(Fl_RGB_Image*)> cb) { on_icon_changed = cb; }
+    Fl_RGB_Image* GetIcon() { return current_icon; }
+
 private:
     FileTable* file_table;
     std::shared_ptr<core::TabContext> context;
+    Fl_RGB_Image* current_icon = nullptr;
 };
 
 }

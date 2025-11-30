@@ -120,6 +120,7 @@ Fl_RGB_Image* IconManager::LoadIconFromSystem(const std::string& path, bool is_d
     UINT flags = SHGFI_ICON | SHGFI_SMALLICON;
     
     std::string lookup_path = path;
+    std::replace(lookup_path.begin(), lookup_path.end(), '/', '\\');
 
     if (!specific) {
         // Generic lookup: Use attributes and dummy path

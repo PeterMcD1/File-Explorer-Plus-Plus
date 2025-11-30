@@ -1,6 +1,8 @@
 #include "ExplorerTab.h"
 #include "../core/FileSystem.h"
+#include "IconManager.h"
 #include <FL/Fl.H>
+#include <FL/Fl_RGB_Image.H>
 
 namespace ui {
 
@@ -34,8 +36,19 @@ void ExplorerTab::Refresh() {
     file_table->rows((int)context->files.size());
     file_table->redraw();
     
-    // We do NOT set the label of ExplorerTab itself, as that would draw a label in the content area.
-    // The tab label is managed by TabBar via ExplorerWindow.
+    // Update icon
+    if (!context->current_path.empty()) {
+        Fl_RGB_Image* icon = IconManager::Get().GetSpecificIcon(context->current_path);
+        if (!icon) {
+            // Fallback to generic directory icon
+            icon = IconManager::Get().GetIcon(context->current_path, true);
+        }
+        
+        if (icon != current_icon) {
+            current_icon = icon;
+            if (on_icon_changed) on_icon_changed(icon);
+        }
+    }
 }
 
 }

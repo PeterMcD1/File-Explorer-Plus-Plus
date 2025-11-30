@@ -2,6 +2,7 @@
 #include <FL/Fl_Group.H>
 #include <FL/Fl_Button.H>
 #include <FL/Fl_Box.H>
+#include <FL/Fl_RGB_Image.H>
 #include <functional>
 #include <vector>
 #include <string>
@@ -14,12 +15,14 @@ public:
     
     void SetActive(bool active);
     void SetLabel(const char* label);
+    void SetIcon(Fl_RGB_Image* icon);
     void SetCloseCallback(std::function<void()> cb);
     void SetSelectCallback(std::function<void()> cb);
     
     int handle(int event) override;
 
 private:
+    Fl_Box* icon_box;
     Fl_Box* label_box;
     Fl_Button* close_btn;
     bool is_active = false;
@@ -34,6 +37,7 @@ public:
     void RemoveTab(void* data);
     void SelectTab(void* data);
     void UpdateTabLabel(void* data, const char* label);
+    void UpdateTabIcon(void* data, Fl_RGB_Image* icon);
     void UpdateLayout();
     
     std::function<void(void*)> on_tab_selected;
