@@ -15,14 +15,7 @@ QuickAccess& QuickAccess::Get() {
 
 QuickAccess::QuickAccess() {
     // Determine save path
-    std::string appData = GetKnownFolderPath(&FOLDERID_RoamingAppData);
-    if (!appData.empty()) {
-        std::string dir = appData + "\\FlashExplorer";
-        std::filesystem::create_directories(dir);
-        save_path = dir + "\\quick_access.txt";
-    } else {
-        save_path = "quick_access.txt";
-    }
+    save_path = GetConfigDir() + "\\quick_access.txt";
     Load();
 }
 

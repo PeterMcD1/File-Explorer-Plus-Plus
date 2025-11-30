@@ -18,16 +18,33 @@ public:
     ~ExplorerWindow();
     
     void RefreshUI(); // Updates status from active tab
-    void SetAddress(const char* path); // Deprecated or delegates to active tab
+    void SetAddress(const char* path); // Updates global address bar
     void UpdateStatus();
     void SetAppIcon(Fl_RGB_Image* icon);
     void Navigate(const char* path);
     void AddTab(const char* path);
     void CloseTab(ExplorerTab* tab);
     void SetActiveTab(ExplorerTab* tab);
+    
+    void SaveWindowPos();
+    bool LoadWindowPos();
+
+    int handle(int event) override; // For window dragging
+    void show() override;
 
 private:
+    // Title Bar Area
+    Fl_Group* title_bar;
     TabBar* tab_bar;
+    Fl_Button* btn_min;
+    Fl_Button* btn_max;
+    Fl_Button* btn_close;
+    
+    // Navigation Area
+    Fl_Group* nav_area;
+    Fl_Input* address_bar;
+    Fl_Button* go_btn;
+
     Sidebar* sidebar;
     Fl_Group* content_area;
     Fl_Box* status_bar;
@@ -36,6 +53,12 @@ private:
     ExplorerTab* active_tab = nullptr;
     
     static void NewTabCallback(Fl_Widget* w, void*);
+    static void WindowControlCallback(Fl_Widget* w, void* data);
+    static void AddressCallback(Fl_Widget* w, void* data);
+    
+    // Dragging state
+    int drag_x = 0, drag_y = 0;
+    bool dragging = false;
 };
 
 }

@@ -16,7 +16,7 @@ int main(int argc, char** argv) {
     Fl::lock();
 
     ui::ExplorerWindow window(800, 600, "Flash Explorer");
-    window.show(argc, argv);
+    window.show();
 
     auto end_time = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();

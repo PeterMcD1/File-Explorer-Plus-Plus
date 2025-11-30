@@ -5,7 +5,6 @@
 #include <memory>
 #include "../core/TabContext.h"
 #include "FileTable.h"
-
 #include <functional>
 
 namespace ui {
@@ -24,12 +23,7 @@ public:
     std::function<void(ExplorerTab*)> on_close;
 
 private:
-    static void AddressCallback(Fl_Widget* w, void* data);
-    
-    Fl_Input* address_bar;
-    Fl_Button* go_btn;
     FileTable* file_table;
-    
     std::shared_ptr<core::TabContext> context;
 };
 

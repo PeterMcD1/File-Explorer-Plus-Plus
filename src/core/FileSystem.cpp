@@ -142,6 +142,17 @@ void StartLoading(const std::string& path, std::shared_ptr<TabContext> context) 
     std::thread(LoadDirectoryWorker, path, context).detach();
 }
 
+std::string GetConfigDir() {
+    std::string appData = GetKnownFolderPath(&FOLDERID_RoamingAppData);
+    if (!appData.empty()) {
+        std::string dir = appData + "\\FlashExplorer";
+        std::error_code ec;
+        fs::create_directories(dir, ec);
+        return dir;
+    }
+    return ".";
+}
+
 std::string GetKnownFolderPath(const void* rfid) {
     PWSTR path = NULL;
     if (SUCCEEDED(SHGetKnownFolderPath(*(KNOWNFOLDERID*)rfid, 0, NULL, &path))) {
