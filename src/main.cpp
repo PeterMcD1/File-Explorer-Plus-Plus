@@ -24,15 +24,18 @@ int main(int argc, char** argv) {
     core::Log("Application started.");
 
     // Modernize UI
-    Fl::scheme("gtk+");
+    // Fl::scheme("gtk+"); // Removed to allow custom scrollbar styling
     Fl::set_font(FL_HELVETICA, "Segoe UI");
     
     // Dark Theme Global Colors
     Fl::background(32, 32, 32); // #202020
     Fl::foreground(224, 224, 224); // #E0E0E0
     Fl::background2(45, 45, 45); // #2D2D2D (Input fields, etc.)
+    
+    // Set global scrollbar size
+    Fl::scrollbar_size(8); // Thinner (8px)
 
-    ui::ExplorerWindow window(800, 600, "Flash Explorer", start_time);
+    ui::ExplorerWindow window(1000, 700, "Flash Explorer", start_time);
     window.show();
 
     int result = Fl::run();

@@ -17,6 +17,10 @@ struct TabContext {
     
     // Callback to notify UI of updates (called from worker thread)
     std::function<void()> on_update;
+
+    // History
+    std::vector<std::string> history_back;
+    std::vector<std::string> history_forward;
 };
 
 }

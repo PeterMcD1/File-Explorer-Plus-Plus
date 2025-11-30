@@ -42,15 +42,16 @@ Fl_RGB_Image* IconManager::GetIcon(const std::string& path, bool is_dir) {
         return icon_cache_[key];
     }
 
-    Fl_RGB_Image* img = LoadIconFromSystem(path, is_dir, false);
+    // Default to small icons for GetIcon
+    Fl_RGB_Image* img = LoadIconFromSystem(path, is_dir, false, false);
     if (img) {
         icon_cache_[key] = img;
     }
     return img;
 }
 
-Fl_RGB_Image* IconManager::GetSpecificIcon(const std::string& path) {
-    return LoadIconFromSystem(path, false, true);
+Fl_RGB_Image* IconManager::GetSpecificIcon(const std::string& path, bool large) {
+    return LoadIconFromSystem(path, false, true, large);
 }
 
 // Helper to convert HICON to Fl_RGB_Image
@@ -59,15 +60,22 @@ Fl_RGB_Image* HIconToFlImage(HICON hIcon) {
 
     ICONINFO iconInfo;
     GetIconInfo(hIcon, &iconInfo);
-
+    
+    // Get dimensions
+    BITMAP bmp;
+    GetObject(iconInfo.hbmColor, sizeof(BITMAP), &bmp);
+    int width = bmp.bmWidth;
+    int height = bmp.bmHeight; // Could be negative if top-down? No, GetObject returns abs usually for BITMAP struct?
+    // Actually BITMAP struct has bmHeight > 0.
+    
     HDC hDC = GetDC(NULL);
     HDC hMemDC = CreateCompatibleDC(hDC);
     
     BITMAPINFO bmi;
     memset(&bmi, 0, sizeof(bmi));
     bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-    bmi.bmiHeader.biWidth = 16;  // Assuming small icon
-    bmi.bmiHeader.biHeight = -16; // Top-down
+    bmi.bmiHeader.biWidth = width;
+    bmi.bmiHeader.biHeight = -height; // Top-down
     bmi.bmiHeader.biPlanes = 1;
     bmi.bmiHeader.biBitCount = 32;
     bmi.bmiHeader.biCompression = BI_RGB;
@@ -78,17 +86,16 @@ Fl_RGB_Image* HIconToFlImage(HICON hIcon) {
     HGDIOBJ oldObj = SelectObject(hMemDC, hBitmap);
     
     // Clear background (transparent)
-    // DrawIconEx handles alpha channel correctly usually
-    DrawIconEx(hMemDC, 0, 0, hIcon, 16, 16, 0, NULL, DI_NORMAL);
+    DrawIconEx(hMemDC, 0, 0, hIcon, width, height, 0, NULL, DI_NORMAL);
 
     // Now we have the bits in BGRA format (Windows default)
     // FLTK wants RGBA or RGB.
     // We need to copy and swap channels.
     
-    std::vector<unsigned char> rgba_data(16 * 16 * 4);
+    std::vector<unsigned char> rgba_data(width * height * 4);
     unsigned char* src = static_cast<unsigned char*>(bits);
     
-    for (int i = 0; i < 16 * 16; ++i) {
+    for (int i = 0; i < width * height; ++i) {
         unsigned char b = src[i * 4 + 0];
         unsigned char g = src[i * 4 + 1];
         unsigned char r = src[i * 4 + 2];
@@ -108,16 +115,18 @@ Fl_RGB_Image* HIconToFlImage(HICON hIcon) {
     DeleteObject(iconInfo.hbmMask);
 
     // Create FLTK image (depth 4 for RGBA)
-    Fl_RGB_Image* temp = new Fl_RGB_Image(rgba_data.data(), 16, 16, 4);
-    Fl_RGB_Image* final_img = (Fl_RGB_Image*)temp->copy(16, 16);
+    Fl_RGB_Image* temp = new Fl_RGB_Image(rgba_data.data(), width, height, 4);
+    Fl_RGB_Image* final_img = (Fl_RGB_Image*)temp->copy(width, height);
     delete temp;
     
     return final_img;
 }
 
-Fl_RGB_Image* IconManager::LoadIconFromSystem(const std::string& path, bool is_dir, bool specific) {
+Fl_RGB_Image* IconManager::LoadIconFromSystem(const std::string& path, bool is_dir, bool specific, bool large) {
     SHFILEINFOA sfi = {0};
-    UINT flags = SHGFI_ICON | SHGFI_SMALLICON;
+    UINT flags = SHGFI_ICON;
+    if (large) flags |= SHGFI_LARGEICON;
+    else flags |= SHGFI_SMALLICON;
     
     std::string lookup_path = path;
     std::replace(lookup_path.begin(), lookup_path.end(), '/', '\\');

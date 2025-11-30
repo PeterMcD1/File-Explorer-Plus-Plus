@@ -20,6 +20,9 @@ private:
     void ShowProperties(const std::string& path);
 
     std::shared_ptr<core::TabContext> tab_context;
+    
+public:
+    std::function<void(const std::string&)> on_navigate;
 };
 
 }

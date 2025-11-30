@@ -16,6 +16,7 @@ public:
     
     void SetNavigateCallback(std::function<void(const std::string&)> cb);
     void Refresh();
+    int handle(int event) override;
 
 private:
     class SidebarButton : public Fl_Button {

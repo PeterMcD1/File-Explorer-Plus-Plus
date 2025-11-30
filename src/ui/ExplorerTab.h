@@ -32,6 +32,10 @@ public:
     void SetIconChangeCallback(std::function<void(Fl_RGB_Image*)> cb) { on_icon_changed = cb; }
     Fl_RGB_Image* GetIcon() { return current_icon; }
 
+    // Callback for navigation request (from FileTable)
+    std::function<void(const std::string&)> on_navigate;
+    void SetNavigateCallback(std::function<void(const std::string&)> cb) { on_navigate = cb; }
+
 private:
     FileTable* file_table;
     std::shared_ptr<core::TabContext> context;

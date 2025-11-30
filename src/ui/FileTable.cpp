@@ -24,6 +24,23 @@ FileTable::FileTable(int x, int y, int w, int h, const char* l, std::shared_ptr<
     col_width(1, 100); // Size
     col_width(2, 80);  // Type (Dir/File)
     
+    // Scrollbar styling
+    // Fl_Table exposes vscrollbar and hscrollbar as public pointers
+    if (vscrollbar) {
+        vscrollbar->box(FL_FLAT_BOX);
+        vscrollbar->color(fl_rgb_color(32, 32, 32)); // Match table background
+        vscrollbar->slider(FL_RFLAT_BOX);
+        vscrollbar->selection_color(fl_rgb_color(100, 100, 100));
+        vscrollbar->labelcolor(fl_rgb_color(32, 32, 32)); // Hide arrows initially
+    }
+    if (hscrollbar) {
+        hscrollbar->box(FL_FLAT_BOX);
+        hscrollbar->color(fl_rgb_color(32, 32, 32));
+        hscrollbar->slider(FL_RFLAT_BOX);
+        hscrollbar->selection_color(fl_rgb_color(100, 100, 100));
+        hscrollbar->labelcolor(fl_rgb_color(32, 32, 32)); // Hide arrows initially
+    }
+
     end();
 }
 
@@ -129,8 +146,32 @@ void FileTable::draw_cell(TableContext context, int R, int C, int X, int Y, int 
 // ...
 
 int FileTable::handle(int event) {
+    if (event == FL_MOVE || event == FL_ENTER || event == FL_LEAVE) {
+        int mx = Fl::event_x();
+        int my = Fl::event_y();
+        
+        // Check vscrollbar
+        if (vscrollbar && vscrollbar->visible()) {
+            bool hover = (mx >= vscrollbar->x() && mx < vscrollbar->x() + vscrollbar->w() &&
+                          my >= vscrollbar->y() && my < vscrollbar->y() + vscrollbar->h());
+            if (hover) vscrollbar->labelcolor(FL_WHITE);
+            else vscrollbar->labelcolor(fl_rgb_color(32, 32, 32));
+            vscrollbar->redraw();
+        }
+        
+        // Check hscrollbar
+        if (hscrollbar && hscrollbar->visible()) {
+            bool hover = (mx >= hscrollbar->x() && mx < hscrollbar->x() + hscrollbar->w() &&
+                          my >= hscrollbar->y() && my < hscrollbar->y() + hscrollbar->h());
+            if (hover) hscrollbar->labelcolor(FL_WHITE);
+            else hscrollbar->labelcolor(fl_rgb_color(32, 32, 32));
+            hscrollbar->redraw();
+        }
+    }
+
     // Right click handling
     if (event == FL_RELEASE && Fl::event_button() == FL_RIGHT_MOUSE) {
+        // ... (existing right click logic)
         // Find which row was clicked
         // Fl_Table_Row doesn't automatically select on right click usually.
         // We need to determine the row.
@@ -217,7 +258,8 @@ int FileTable::handle(int event) {
             
             if (!path.empty()) {
                 if (is_dir) {
-                    core::StartLoading(path, tab_context);
+                    if (on_navigate) on_navigate(path);
+                    else core::StartLoading(path, tab_context);
                 } else {
                     ShellExecuteA(NULL, "open", path.c_str(), NULL, NULL, SW_SHOWNORMAL);
                 }
@@ -267,11 +309,12 @@ void FileTable::ShowContextMenu(const std::string& path, bool is_dir) {
     if (m) {
         std::string label = m->label() ? m->label() : "";
         if (label == "Open") {
-            if (is_dir) {
-                core::StartLoading(path, tab_context);
-            } else {
-                ShellExecuteA(NULL, "open", path.c_str(), NULL, NULL, SW_SHOWNORMAL);
-            }
+                if (is_dir) {
+                    if (on_navigate) on_navigate(path);
+                    else core::StartLoading(path, tab_context);
+                } else {
+                    ShellExecuteA(NULL, "open", path.c_str(), NULL, NULL, SW_SHOWNORMAL);
+                }
         } else if (label == "Copy Path") {
             CopyPathToClipboard(path);
         } else if (label == "Properties") {

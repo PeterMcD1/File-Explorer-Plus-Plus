@@ -1,4 +1,3 @@
-
 #include "ExplorerWindow.h"
 #include "../core/AppState.h"
 #include "../core/FileSystem.h"
@@ -28,7 +27,7 @@ void ScheduledIconLoad(void* data) {
         // Initialize COM for this thread
         CoInitialize(NULL);
         
-        Fl_RGB_Image* icon = IconManager::Get().GetSpecificIcon("C:\\Windows\\explorer.exe");
+        Fl_RGB_Image* icon = IconManager::Get().GetSpecificIcon("C:\\Windows\\explorer.exe", true);
         
         CoUninitialize();
 
@@ -37,6 +36,31 @@ void ScheduledIconLoad(void* data) {
         }
     }).detach();
 }
+
+// Custom Button for Navigation to handle disabled state styling
+class NavButton : public Fl_Button {
+public:
+    NavButton(int x, int y, int w, int h, const char* l = 0) : Fl_Button(x, y, w, h, l) {
+        box(FL_FLAT_BOX);
+        align(FL_ALIGN_CENTER | FL_ALIGN_INSIDE);
+    }
+    
+    void draw() override {
+        // Draw background
+        fl_color(color());
+        fl_rectf(x(), y(), w(), h());
+        
+        // Draw label
+        if (active_r()) {
+            fl_color(labelcolor());
+        } else {
+            fl_color(fl_rgb_color(100, 100, 100)); // Greyed out
+        }
+        
+        fl_font(labelfont(), labelsize());
+        fl_draw(label(), x(), y(), w(), h(), align());
+    }
+};
 
 ExplorerWindow::ExplorerWindow(int w, int h, const char* title, std::chrono::steady_clock::time_point start_time) 
     : Fl_Double_Window(w, h, title), start_time(start_time) {
@@ -104,8 +128,48 @@ ExplorerWindow::ExplorerWindow(int w, int h, const char* title, std::chrono::ste
     nav_area->box(FL_FLAT_BOX);
     nav_area->color(fl_rgb_color(56, 56, 56)); // #383838 Slightly lighter than title bar
     
+    int btn_x = 10;
+    int nav_btn_w = 30;
+    int nav_btn_h = 24;
+    int nav_btn_y = title_h + 8;
+    int spacing = 5;
+    
+    // Back
+    btn_back = new NavButton(btn_x, nav_btn_y, nav_btn_w, nav_btn_h, "←");
+    btn_back->color(fl_rgb_color(56, 56, 56));
+    btn_back->labelcolor(FL_WHITE);
+    btn_back->labelsize(18); // Larger icon
+    btn_back->callback(NavButtonCallback, this);
+    btn_back->deactivate();
+    btn_x += nav_btn_w + spacing;
+    
+    // Forward
+    btn_forward = new NavButton(btn_x, nav_btn_y, nav_btn_w, nav_btn_h, "→");
+    btn_forward->color(fl_rgb_color(56, 56, 56));
+    btn_forward->labelcolor(FL_WHITE);
+    btn_forward->labelsize(18);
+    btn_forward->callback(NavButtonCallback, this);
+    btn_forward->deactivate();
+    btn_x += nav_btn_w + spacing;
+    
+    // Up
+    btn_up = new NavButton(btn_x, nav_btn_y, nav_btn_w, nav_btn_h, "↑");
+    btn_up->color(fl_rgb_color(56, 56, 56));
+    btn_up->labelcolor(FL_WHITE);
+    btn_up->labelsize(18);
+    btn_up->callback(NavButtonCallback, this);
+    btn_x += nav_btn_w + spacing;
+    
+    // Refresh
+    btn_refresh = new NavButton(btn_x, nav_btn_y, nav_btn_w, nav_btn_h, "⟳");
+    btn_refresh->color(fl_rgb_color(56, 56, 56));
+    btn_refresh->labelcolor(FL_WHITE);
+    btn_refresh->labelsize(18);
+    btn_refresh->callback(NavButtonCallback, this);
+    btn_x += nav_btn_w + spacing;
+    
     // Address Bar
-    address_bar = new Fl_Input(10, title_h + 8, w - 20, 24);
+    address_bar = new Fl_Input(btn_x, nav_btn_y, w - btn_x - 10, 24);
     address_bar->box(FL_FLAT_BOX);
     address_bar->color(fl_rgb_color(51, 51, 51)); // #333333
     address_bar->textcolor(FL_WHITE);
@@ -314,6 +378,72 @@ void ExplorerWindow::AddressCallback(Fl_Widget* w, void* data) {
     }
 }
 
+void ExplorerWindow::NavButtonCallback(Fl_Widget* w, void* data) {
+    ExplorerWindow* win = (ExplorerWindow*)data;
+    if (!win || !win->active_tab) return;
+    
+    auto context = win->active_tab->GetContext();
+    std::string current_path;
+    {
+        std::lock_guard<std::mutex> lock(context->mutex);
+        current_path = context->current_path;
+    }
+    
+    if (w == win->btn_back) {
+        std::string prev;
+        {
+            std::lock_guard<std::mutex> lock(context->mutex);
+            if (!context->history_back.empty()) {
+                prev = context->history_back.back();
+                context->history_back.pop_back();
+                // Push current to forward
+                if (!current_path.empty()) {
+                    context->history_forward.push_back(current_path);
+                }
+            }
+        }
+        if (!prev.empty()) win->active_tab->Navigate(prev.c_str());
+        
+    } else if (w == win->btn_forward) {
+        std::string next;
+        {
+            std::lock_guard<std::mutex> lock(context->mutex);
+            if (!context->history_forward.empty()) {
+                next = context->history_forward.back();
+                context->history_forward.pop_back();
+                // Push current to back
+                if (!current_path.empty()) {
+                    context->history_back.push_back(current_path);
+                }
+            }
+        }
+        if (!next.empty()) win->active_tab->Navigate(next.c_str());
+        
+    } else if (w == win->btn_up) {
+        std::string path = current_path;
+        if (path.length() <= 3) return; // Already at root (e.g. C:/)
+        
+        if (path.back() == '/' || path.back() == '\\') path.pop_back();
+        size_t pos = path.find_last_of("/\\");
+        
+        if (pos != std::string::npos) {
+            std::string parent = path.substr(0, pos + 1);
+            if (parent.length() == 2 && parent[1] == ':') parent += "/"; // Ensure C: becomes C:/
+            
+            // Navigate (pushes to history)
+            win->Navigate(parent.c_str());
+        } else {
+            // Maybe just drive letter like "C:"?
+            if (path.length() == 2 && path[1] == ':') {
+                 // Already root?
+            }
+        }
+    } else if (w == win->btn_refresh) {
+        // Use Navigate to reload safely
+        win->active_tab->Navigate(current_path.c_str());
+    }
+}
+
 void ExplorerWindow::SetAppIcon(Fl_RGB_Image* icon) {
     if (app_icon) delete app_icon; // Remove old if any
     app_icon = icon;
@@ -359,7 +489,15 @@ void ExplorerWindow::AddTab(const char* path) {
     tab->SetIconChangeCallback([this, tab](Fl_RGB_Image* icon) {
         tab_bar->UpdateTabIcon(tab, icon);
     });
+
+    // Set navigation callback (to handle history)
+    tab->SetNavigateCallback([this](const std::string& path) {
+        this->Navigate(path.c_str());
+    });
     
+    // Initial navigation
+    // Note: We don't push initial path to history usually, or we do?
+    // Let's say initial path is just current. History empty.
     tab->Navigate(path);
     
     // Add to TabBar
@@ -421,6 +559,22 @@ void ExplorerWindow::RefreshUI() {
     // Update Address Bar
     if (address_bar) address_bar->value(context->current_path.c_str());
     
+    // Update Buttons
+    if (btn_back) {
+        if (context->history_back.empty()) btn_back->deactivate();
+        else btn_back->activate();
+    }
+    if (btn_forward) {
+        if (context->history_forward.empty()) btn_forward->deactivate();
+        else btn_forward->activate();
+    }
+    
+    if (btn_up) {
+        std::string path = context->current_path;
+        if (path.length() <= 3) btn_up->deactivate(); // Root (C:/)
+        else btn_up->activate();
+    }
+    
     // Update Tab Label
     if (!context->current_path.empty()) {
         std::string label = context->current_path;
@@ -448,6 +602,15 @@ void ExplorerWindow::NewTabCallback(Fl_Widget* w, void* data) {
 
 void ExplorerWindow::Navigate(const char* path) {
     if (active_tab) {
+        auto context = active_tab->GetContext();
+        {
+            std::lock_guard<std::mutex> lock(context->mutex);
+            // Push current to history if different
+            if (!context->current_path.empty() && context->current_path != path) {
+                context->history_back.push_back(context->current_path);
+                context->history_forward.clear(); // Clear forward on new navigation
+            }
+        }
         active_tab->Navigate(path);
     }
 }
@@ -514,8 +677,20 @@ void ExplorerWindow::resize(int x, int y, int w, int h) {
     // 2. Navigation Area
     if (nav_area) {
         nav_area->resize(0, title_h, w, nav_h);
+        
+        int btn_x = 10;
+        int nav_btn_w = 30;
+        int nav_btn_h = 24;
+        int nav_btn_y = title_h + 8;
+        int spacing = 5;
+        
+        if (btn_back) { btn_back->resize(btn_x, nav_btn_y, nav_btn_w, nav_btn_h); btn_x += nav_btn_w + spacing; }
+        if (btn_forward) { btn_forward->resize(btn_x, nav_btn_y, nav_btn_w, nav_btn_h); btn_x += nav_btn_w + spacing; }
+        if (btn_up) { btn_up->resize(btn_x, nav_btn_y, nav_btn_w, nav_btn_h); btn_x += nav_btn_w + spacing; }
+        if (btn_refresh) { btn_refresh->resize(btn_x, nav_btn_y, nav_btn_w, nav_btn_h); btn_x += nav_btn_w + spacing; }
+        
         if (address_bar) {
-            address_bar->resize(10, title_h + 8, w - 20, 24);
+            address_bar->resize(btn_x, nav_btn_y, w - btn_x - 10, 24);
         }
     }
     
@@ -542,3 +717,4 @@ void ExplorerWindow::resize(int x, int y, int w, int h) {
 }
 
 }
+

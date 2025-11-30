@@ -45,6 +45,10 @@ private:
     
     // Navigation Area
     Fl_Group* nav_area = nullptr;
+    Fl_Button* btn_back = nullptr;
+    Fl_Button* btn_forward = nullptr;
+    Fl_Button* btn_up = nullptr;
+    Fl_Button* btn_refresh = nullptr;
     Fl_Input* address_bar = nullptr;
 
     Sidebar* sidebar = nullptr;
@@ -57,6 +61,7 @@ private:
     static void NewTabCallback(Fl_Widget* w, void*);
     static void WindowControlCallback(Fl_Widget* w, void* data);
     static void AddressCallback(Fl_Widget* w, void* data);
+    static void NavButtonCallback(Fl_Widget* w, void* data);
     
     // Dragging state
     int drag_x = 0, drag_y = 0;

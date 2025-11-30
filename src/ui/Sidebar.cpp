@@ -16,11 +16,13 @@ Sidebar::Sidebar(int x, int y, int w, int h) : Fl_Scroll(x, y, w, h) {
     
     // Scrollbar settings
     type(Fl_Scroll::VERTICAL_ALWAYS); // Always show vertical scrollbar
-    scrollbar_size(12);
+    scrollbar_size(8); // Thinner (8px)
     scrollbar.box(FL_FLAT_BOX);
-    scrollbar.color(fl_rgb_color(25, 25, 25)); // Track (darker than bg)
-    scrollbar.slider(FL_FLAT_BOX);
-    scrollbar.selection_color(fl_rgb_color(80, 80, 80)); // Thumb
+    scrollbar.color(fl_rgb_color(37, 37, 38)); // Track matches background
+    scrollbar.slider(FL_RFLAT_BOX); // Rounded flat box
+    scrollbar.selection_color(fl_rgb_color(100, 100, 100)); // Thumb color
+    // Hide arrows initially by matching color to track
+    scrollbar.labelcolor(fl_rgb_color(37, 37, 38));
     
     Refresh();
     
@@ -207,6 +209,30 @@ std::string Sidebar::GetKnownFolderPath(const void* rfid) {
         return strTo;
     }
     return "";
+}
+
+int Sidebar::handle(int event) {
+    if (event == FL_MOVE || event == FL_ENTER || event == FL_LEAVE) {
+        int mx = Fl::event_x();
+        int my = Fl::event_y();
+        
+        // Check if mouse is over scrollbar
+        // Scrollbar is on the right side
+        int sb_x = x() + w() - scrollbar.w();
+        int sb_y = y();
+        int sb_w = scrollbar.w();
+        int sb_h = h();
+        
+        bool hover = (mx >= sb_x && mx < sb_x + sb_w && my >= sb_y && my < sb_y + sb_h);
+        
+        if (hover) {
+            scrollbar.labelcolor(FL_WHITE); // Show arrows
+        } else {
+            scrollbar.labelcolor(fl_rgb_color(37, 37, 38)); // Hide arrows
+        }
+        scrollbar.redraw();
+    }
+    return Fl_Scroll::handle(event);
 }
 
 }

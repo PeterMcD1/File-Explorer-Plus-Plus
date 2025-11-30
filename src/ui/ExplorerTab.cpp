@@ -17,6 +17,13 @@ ExplorerTab::ExplorerTab(int x, int y, int w, int h)
 
     // File Table (Full space)
     file_table = new FileTable(x, y, w, h, 0, context);
+    file_table->on_navigate = [this](const std::string& path) {
+        if (this->on_navigate) {
+            this->on_navigate(path);
+        } else {
+            this->Navigate(path.c_str());
+        }
+    };
     
     end();
     resizable(file_table);

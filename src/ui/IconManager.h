@@ -16,7 +16,7 @@ public:
 
     // Returns a new Fl_RGB_Image for a specific file (not cached).
     // Caller owns the returned pointer.
-    Fl_RGB_Image* GetSpecificIcon(const std::string& path);
+    Fl_RGB_Image* GetSpecificIcon(const std::string& path, bool large = false);
 
 private:
     IconManager() = default;
@@ -26,7 +26,7 @@ private:
     std::map<std::string, Fl_RGB_Image*> icon_cache_;
     std::mutex cache_mutex_;
     
-    Fl_RGB_Image* LoadIconFromSystem(const std::string& path, bool is_dir, bool specific = false);
+    Fl_RGB_Image* LoadIconFromSystem(const std::string& path, bool is_dir, bool specific, bool large);
 };
 
 }
