@@ -3,6 +3,7 @@
 #include <shlobj.h>
 #include <windows.h>
 #include <iostream>
+#include <FL/Fl.H>
 
 namespace ui {
 
@@ -24,6 +25,9 @@ Sidebar::Sidebar(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
     AddButton("Local Disk (C:)", "C:/", cur_y);
     
     end();
+    
+    // Defer icon loading to improve startup time
+    Fl::add_timeout(0.1, LoadIconsCallback, this);
 }
 
 Sidebar::~Sidebar() {
@@ -43,29 +47,13 @@ void Sidebar::AddButton(const char* label, const std::string& path, int& cur_y) 
     Fl_Button* btn = new Fl_Button(x() + 10, cur_y, w() - 20, 30, label);
     btn->copy_label(label);
     
-    // Get Specific Icon for special folders
-    Fl_RGB_Image* icon = IconManager::Get().GetSpecificIcon(path);
-    if (icon) {
-        btn->image(icon);
-        icons.push_back(icon);
-    }
-    
     // Align icon left, text right of icon
-    // FL_ALIGN_INSIDE puts everything inside the box
-    // FL_ALIGN_LEFT puts text to the left (or image if image is there?)
-    // FL_ALIGN_IMAGE_NEXT_TO_TEXT usually puts image left of text
-    // Let's try standard left alignment with image
     btn->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE | FL_ALIGN_IMAGE_NEXT_TO_TEXT);
     
     btn->box(FL_FLAT_BOX);
     btn->color(FL_LIGHT3);
     btn->selection_color(FL_SELECTION_COLOR);
     btn->clear_visible_focus();
-    
-    // Store path in user_data (need to copy string?)
-    // Fl_Widget::user_data stores void*.
-    // We can store a new std::string, but need to manage memory.
-    // Or capture path in lambda.
     
     std::string* path_ptr = new std::string(path);
     btn->callback([](Fl_Widget* w, void* data) {
@@ -76,8 +64,26 @@ void Sidebar::AddButton(const char* label, const std::string& path, int& cur_y) 
         }
     }, path_ptr);
     
-    buttons.push_back(btn);
+    items.push_back({btn, path});
     cur_y += 35;
+}
+
+void Sidebar::LoadIconsCallback(void* data) {
+    Sidebar* sidebar = (Sidebar*)data;
+    if (sidebar) {
+        sidebar->LoadIcons();
+    }
+}
+
+void Sidebar::LoadIcons() {
+    for (auto& item : items) {
+        Fl_RGB_Image* icon = IconManager::Get().GetSpecificIcon(item.path);
+        if (icon) {
+            item.btn->image(icon);
+            icons.push_back(icon);
+            item.btn->redraw();
+        }
+    }
 }
 
 std::string Sidebar::GetKnownFolderPath(const void* rfid) {
